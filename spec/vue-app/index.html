@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+
+<title>Vue App</title>
+
+<style>
+  #canvas {
+    width: 500px;
+    height: 400px;
+  }
+</style>
+
+<div id="root">
+  <h1>{{title}}</h1>
+  <div app-name="canvas"></div>
+</div>
+
+<script type="module">
+  import Vue from 'https://unpkg.com/vue'
+  import { importSource, registerMicroApp, connectScope } from 'https://unpkg.com/mfy/es/index.js'
+
+  // 连接到当前应用所处的scope，可选的，可通过scope完成应用内外的事件通信
+  const scope = connectScope()
+
+  // 注册一个微应用，好在本应用内部使用
+  // 注册过程中，将直接拉取远端的应用代码，但不会进行渲染
+  // registerMicroApp内部会自动引用scope，因此，name是不可以重复的
+  // 当前这个页面可以注册多个micro app
+  const app = registerMicroApp({
+    name: 'canvas', // 该应用将被渲染到哪个位置
+    source: () => importSource('../jqvm-app/index.html'), // 获取应用入口源码，也会获取应用入口源码所包含的所有资源（图片、样式、脚本），会有缓存，包含资源在内的url将作为标识信息，而且是全局缓存，因此，同一个应用，虽然可能被多次加载，但实际只会执行一次加载请求
+    type: 'iframe', // 渲染方式，iframe|shadowdom
+    onBootstrap() {}, // 启动时的回调函数
+    onLoad() {}, // 资源加载完后的回调函数
+    onMount() {}, // 渲染完成后的回调函数
+    onUnmount() {}, // 卸载时（DOM被清除）的回调函数
+    onDestroy() {}, // 完成销毁之后
+    onMessage(data) {}, // 该应用内部发出消息时（子应用内调用scope.emit）
+  })
+
+  const vm = new Vue({
+    el: '#root',
+    data: {
+      title: 'Vue App',
+    },
+    mounted() {
+      app.bootstrap() // 启动注册好的应用，完成渲染
+      app.dispatch({ type: 'opendialog' }) // 向启动后的应用内部发送消息
+      app.listen(function() {}) // 和onMessage效果一样，作为接口形式存在
+
+      scope.emit({ type: 'bootstrap' }) // 向引用当前microapp的上层应用发送消息
+      scope.broadcast({ type: 'bootstrap', app }) // 从rootScope向整个应用进行广播
+    },
+    beforeDestroy() {
+      app.destroy()
+    },
+  })
+
+  // 当前scope的生命周期
+  // load和bootstrap无法监听，因为当代码执行时，已经bootstrap完成了
+  scope.on('mount', () => {})
+  scope.on('unmount', () => {})
+  scope.on('destroy', () => {})
+
+  // 向当前scope中的所有app发送消息
+  scope.dispatch({ type: 'message' })
+</script>

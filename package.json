@@ -1,0 +1,26 @@
+{
+  "name": "mfy",
+  "version": "0.0.6",
+  "description": "简易的无侵入式微前端框架",
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "express": "^4.17.1",
+    "webpack": "^4.44.2",
+    "webpack-cli": "^4.1.0"
+  },
+  "scripts": {
+    "dev": "node dev-server",
+    "build": "webpack"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://gitee.com/frustigor/mfy.git"
+  },
+  "keywords": [
+    "微前端",
+    "框架"
+  ],
+  "author": "frustigor",
+  "license": "MIT"
+}

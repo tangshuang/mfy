@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+
+<meta charset="utf-8" />
+<title>微应用1</title>
+
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.5.3/css/bootstrap.min.css" />
+<style id="my-style">
+  @import url('../index.css');
+
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+  div {
+    margin: 0;
+  }
+  @media only screen and (max-width: 500px) {
+    body {
+      background-color:green;
+    }
+  }
+</style>
+
+<div>对于一个微应用而言，非常容易</div>
+<button id="changeUrl">Change URL</button>
+<div id="root">
+  {{title}}
+</div>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.5.3/js/bootstrap.bundle.min.js"></script>
+<script>
+  function handleClick() {
+    alert('click')
+  }
+</script>
+<script script-name="xxx">
+  document.querySelector('#changeUrl').addEventListener('click', () => {
+    window.location.hash = '#' + Math.random()
+  })
+</script>

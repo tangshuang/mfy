@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+
+<title>微应用1</title>
+
+<div>这是一个微应用</div>
+<div>
+  <button onclick="handleAlert()">点击提示</button>
+  <button id="sendMessage">发送消息</button>
+</div>
+
+<script>
+  function handleAlert() {
+    alert('提示语出现')
+  }
+</script>
+
+<script type="module">
+  import { connectScope } from '../../es/index.js'
+
+  const scope = connectScope()
+
+  document.querySelector('#sendMessage').addEventListener('click', () => {
+    scope.emit('xxxx')
+  })
+
+  scope.listen((data) => {
+    console.log('我是微应用1，我接收到父级发来的消息：', data)
+  })
+</script>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+
+<style>
+  main {
+    position: relative;
+    width: 800px;
+    height: 600px;
+  }
+  mfy-app {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+</style>
+
+<div id="app">
+  <h1>微前端</h1>
+  <nav>
+    <button onclick="navigate('#app1')">App1</button>
+    <button onclick="navigate('#app2')">App2</button>
+    <button onclick="navigate('#app3')">App3</button>
+    <button id="sendToApp1">向App1发消息</button>
+    <button id="removeApp1">从文档中删除App1</button>
+    <button id="resumeApp1">在文档中重建App1</button>
+    <input id="searchText" />
+    <button id="handleSearch">搜索</button>
+  </nav>
+  <main>
+    <mfy-app name="app1"></mfy-app>
+    <mfy-app name="app2"></mfy-app>
+    <mfy-app name="app3"></mfy-app>
+  </main>
+</div>
+
+<script>
+  function navigate(hash) {
+    window.location.hash = hash
+  }
+</script>
+<script type="module">
+  import { importSource, registerMicroApp, connectScope } from '../es/index.js'
+  import { registerRouter } from '../es/router.js'
+
+  const scope = connectScope()
+
+  const app1 = registerMicroApp({
+    name: 'app1',
+    source: () => importSource('./micro-apps/app1.html'),
+    type: 'iframe',
+    onBootstrap() {
+      console.log('app1 bootstrap')
+    },
+    onLoad() {
+      console.log('app1 loaded')
+    },
+    onMount() {
+      console.log('app1 mount')
+    },
+    onUnmount() {
+      console.log('app1 unmount')
+    },
+    onDestroy() {
+      console.log('app1 destroy')
+    },
+    onMessage(data) {
+      console.log('父级应用接收到App1发来的消息:', data)
+    },
+  })
+
+  const app2 = registerMicroApp({
+    name: 'app2',
+    source: () => importSource('./micro-apps/app2.html'),
+    type: 'shadowdom',
+    hoistCssRules: (rule) => {
+      if (rule.selector === 'h1') {
+        return rule.cssText
+      }
+    },
+    placeholder: `
+      <h3>正在加载App2</h3>
+    `,
+  })
+
+  const app3 = registerMicroApp({
+    name: 'app3',
+    source: () => importSource('https://baidu.com'),
+    type: 'iframe',
+  })
+
+  registerRouter({
+    autoBootstrap: true,
+    transition: 'slide',
+    routes: [
+      {
+        app: app1,
+        match: ({ hash }) => {
+          const [root] = hash.split('?')
+          return root === '#app1'
+        },
+        map: ({ hash }) => {
+          const [, search] = hash.split('?')
+          return search ? '#?' + search : ''
+        },
+      },
+      {
+        app: app2,
+        match: () => window.location.hash === '#app2',
+        reactive: (info) => {
+          console.log('App2内部发生了url更改（虽然它并不在iframe中）：', info)
+        },
+      },
+      {
+        app: app3,
+        match: () => window.location.hash.startsWith('#app3'),
+        map: ({ hash }) => {
+          const [, search] = hash.split('?')
+          return search ? 'https://baidu.com/s?' + search : ''
+        },
+      },
+    ],
+  })
+
+  const $ = (selector) => document.querySelector(selector)
+
+  $('#sendToApp1').addEventListener('click', () => {
+    scope.send('app1', '我是顶层发来的消息')
+  })
+  $('#removeApp1').addEventListener('click', () => {
+    const app1 = $('mfy-app[name=app1]')
+    if (!app1) {
+      return
+    }
+    app1.parentNode.removeChild(app1)
+  })
+  $('#resumeApp1').addEventListener('click', () => {
+    const app1 = $('mfy-app[name=app1]')
+    if (app1) {
+      return
+    }
+
+    const el = document.createElement('mfy-app')
+    el.setAttribute('name', 'app1')
+    $('#app main').appendChild(el)
+  })
+  $('#handleSearch').addEventListener('click', () => {
+    navigate('#app3?wd=' + $('#searchText').value)
+  })
+
+  if (window.location.hash.includes('?')) {
+    const search = window.location.hash.split('?').pop()
+    const params = search.split('&').map(item => item.split('='))
+    const item = params.find(param => param[0] === 'wd')
+    if (item) {
+      $('#searchText').value = item[1]
+    }
+  }
+</script>
