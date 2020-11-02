@@ -65,6 +65,9 @@
     onMessage(data) {
       console.log('父级应用接收到App1发来的消息:', data)
     },
+    placeholder: () => `
+      <h3>正在加载App1</h3>
+    `,
   })
 
   const app2 = registerMicroApp({

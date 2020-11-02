@@ -252,7 +252,7 @@ function createApp(parentScope, options) {
     }
 
     await element.ready()
-    placeholder && !source.fetched && element.wait && element.wait(placeholder)
+    placeholder && !source.fetched && element.wait && element.wait(typeof placeholder === 'function' ? placeholder() : placeholder)
     await source.ready()
 
     if (type === 'iframe') {
