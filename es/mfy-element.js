@@ -102,6 +102,13 @@ export class MFY_Element extends HTMLElement {
 
   createIframe() {
     const shadowRoot = this.attachShadow({ mode: 'closed' })
+
+    // 为placeholder做准备
+    this.wait = (innerHTML) => {
+      shadowRoot.innerHTML = innerHTML
+    }
+    this._readyResolve()
+
     const style = document.createElement('style')
     const iframe = document.createElement('iframe')
 
@@ -174,12 +181,11 @@ export class MFY_Element extends HTMLElement {
     // }
 
     // 必须强制实现的接口
-    this.wait = (innerHTML) => {
-      shadowRoot.innerHTML = innerHTML
-    }
     this.mount = (url, params) => new Promise((resolve, reject) => {
-      shadowRoot.innerHTML = '' // 清空所有内容
-      this.wait = null // 删除该接口
+      if (this.wait) {
+        shadowRoot.innerHTML = '' // 清空所有内容
+        this.wait = null // 删除该接口
+      }
 
       shadowRoot.appendChild(style)
       shadowRoot.appendChild(iframe)
@@ -272,12 +278,16 @@ export class MFY_Element extends HTMLElement {
         iframe.src = url
       }
     })
-
-    this._readyResolve()
   }
 
   async createVM() {
     const shadowRoot = this.attachShadow({ mode: 'closed' })
+
+    // 为placeholder做准备
+    this.wait = (innerHTML) => {
+      shadowRoot.innerHTML = innerHTML
+    }
+    this._readyResolve()
 
     const style = document.createElement('style')
     const vmbox = document.createElement('div')
@@ -308,13 +318,12 @@ export class MFY_Element extends HTMLElement {
     win.addEventListener('hashchange', () => reactive('hashchange'))
 
     // 必须强制实现的接口
-    this.wait = (innerHTML) => {
-      shadowRoot.innerHTML = innerHTML
-    }
     this.mount = async ({ styles, scripts, elements }, options = {}) => {
       // 置空
-      shadowRoot.innerHTML = ''
-      this.wait = null
+      if (this.wait) {
+        shadowRoot.innerHTML = ''
+        this.wait = null
+      }
 
       shadowRoot.appendChild(style)
       shadowRoot.appendChild(vmbox)
@@ -424,8 +433,6 @@ export class MFY_Element extends HTMLElement {
         jsvm.window.history.pushState(null, null, nextUrl)
       }
     })
-
-    this._readyResolve()
   }
 
   // attributeChangedCallback() {}
