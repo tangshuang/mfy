@@ -330,8 +330,8 @@ export class MFY_Element extends HTMLElement {
 
       const { params, globalVars } = options
 
-      const setElementAttributes = (el, attributes) => {
-        attributes.forEach(({ name, value }) => el.setAttribute(name, value))
+      const setElementAttributes = (el, attributes, excludes = []) => {
+        attributes.filter(item => !excludes.includes(item.name)).forEach(({ name, value }) => el.setAttribute(name, value))
       }
 
       const styleEls = styles.map(style => {
@@ -370,29 +370,35 @@ export class MFY_Element extends HTMLElement {
       await asyncIterate(scripts, async (script) => {
         const { type, attributes, textContent, src } = script
         const el = document.createElement('script')
-        setElementAttributes(el, attributes)
         const ready = () => new Promise((resolve, reject) => {
           el.onload = resolve
           el.onerror = reject
         })
 
-        if (type === 'module') {
-          el.type = 'module'
-          el.textContent = textContent
-          vmbox.appendChild(el)
-        }
-        else if (src && textContent) {
-          vmbox.appendChild(el)
-          await runScriptInSandbox(textContent, jsvm, { ...globalVars, currenctScript: el })
-        }
-        else if (script.src) {
-          el.src = script.src
+        // 仅支持普通javascript在沙箱中运行，不支持其他任何形式在沙箱中运行，所以全部原样输出
+        const isScript = type === 'text/javascript'
+
+        if (!isScript) {
+          setElementAttributes(el, attributes, ['src'])
+          if (!src) {
+            el.textContent = textContent
+          }
+          // src经过相对路径处理，不能使用原始src
+          else {
+            el.src = src
+          }
           vmbox.appendChild(el)
           await ready()
         }
-        else {
+        else if (src) {
+          setElementAttributes(el, attributes, ['src'])
           vmbox.appendChild(el)
-          await runScriptInSandbox(script.textContent, jsvm, globalVars)
+          await runScriptInSandbox(textContent, jsvm, { ...globalVars, currenctScript: el })
+        }
+        else {
+          setElementAttributes(el, attributes)
+          vmbox.appendChild(el)
+          await runScriptInSandbox(textContent, jsvm, globalVars)
         }
       })
     }

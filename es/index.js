@@ -575,31 +575,38 @@ async function parseSourceText(source) {
       styles.push(res)
     }
   }
-  const pushScriptLink = async (node) => {
-    const { outerHTML, attributes } = node
-    const src = resolvePath(sourceUrl, node.src)
-
-    const source = importSource(src, { baseUrl: sourceUrl, sourceSwitchMapping })
+  const pushScriptNode = async (node) => {
+    const { outerHTML, attributes, type = 'text/javascript', textContent } = node
     const res = {
       outerHTML,
       attributes: buildAttributes(attributes),
-      src,
-      type: node.type || 'text/javascript',
+      type,
     }
-    try {
-      await source.ready()
-      const text = source.text()
-      res.textContent = text
-      res.attributes = res.attributes.filter(item => item.name !== 'src')
-      scripts.push(res)
+
+    if (node.src) {
+      try {
+        const src = resolvePath(sourceUrl, node.src)
+        const source = importSource(src, { baseUrl: sourceUrl, sourceSwitchMapping })
+        res.src = src
+
+        // 如果是外链，会被中断
+        await source.ready()
+        const text = source.text
+        res.textContent = text
+        scripts.push(res)
+      }
+      catch (e) {
+        scripts.push(res)
+      }
     }
-    catch (e) {
+    else {
+      res.textContent = textContent
       scripts.push(res)
     }
   }
 
   const push = async (node) => {
-    const { outerHTML, attributes, nodeName, textContent } = node
+    const { outerHTML, attributes, nodeName } = node
     const tag = nodeName.toLowerCase()
     if (tag === 'style') {
       await pushStyleNode(node)
@@ -607,22 +614,14 @@ async function parseSourceText(source) {
     else if (tag === 'link' && node.rel === 'stylesheet') {
       await pushSheetLink(node)
     }
-    else if (tag === 'script' && node.src) {
-      await pushScriptLink(node)
-    }
     else if (tag === 'script') {
-      scripts.push({
-        outerHTML,
-        attributes: buildAttributes(attributes),
-        textContent,
-        type: node.type || 'text/javascript',
-      })
+      await pushScriptNode(node)
     }
     else {
       elements.push({
         outerHTML,
         attributes: buildAttributes(attributes),
-        textContent,
+        tag,
       })
     }
   }
