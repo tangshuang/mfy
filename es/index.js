@@ -231,8 +231,11 @@ function createApp(parentScope, options) {
     if (type === 'iframe') {
       await element.createIframe()
     }
-    else {
+    else if (type === 'shadowdom') {
       await element.createVM()
+    }
+    else {
+      await element.createBox()
     }
 
     const { url } = source
@@ -259,7 +262,7 @@ function createApp(parentScope, options) {
       const { url } = source
       await element.mount(url, params)
     }
-    else {
+    else if (type === 'shadowdom') {
       const { styles, scripts, elements } = await parseSourceText(source)
 
       if (hoistCssRules) {
@@ -301,6 +304,10 @@ function createApp(parentScope, options) {
         },
       })
     }
+    else {
+      const { styles, scripts, elements } = await parseSourceText(source)
+      await element.mount({ styles, scripts, elements }, { params })
+    }
   }
 
   async function update(params) {
@@ -334,7 +341,7 @@ function createApp(parentScope, options) {
     app.mounted = null
 
     // 卸载污染的样式块
-    if (hoistCssRules) {
+    if (hoistCssRules && type === 'shadowdom') {
       const id = 'mfy-hoist-style-' + name
       const el = document.querySelector('style#' + id)
       if (el) {

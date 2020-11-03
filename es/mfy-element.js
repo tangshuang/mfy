@@ -334,7 +334,7 @@ export class MFY_Element extends HTMLElement {
         attributes.filter(item => !excludes.includes(item.name)).forEach(({ name, value }) => el.setAttribute(name, value))
       }
 
-      const styleEls = styles.map(style => {
+      const styleEls = styles.map((style) => {
         if (style.rules && style.rules.some(rule => rule.selector.indexOf('html') > -1 || rule.selector.indexOf('body') > -1)) {
           const ruleTexts = style.rules.map(rule => rule.cssText.replace('html', ':host').replace('body', ':host'))
           const cssText = ruleTexts.join('\n')
@@ -401,6 +401,8 @@ export class MFY_Element extends HTMLElement {
           await runScriptInSandbox(textContent, jsvm, globalVars)
         }
       })
+
+      this.emit('mount')
     }
     this.unmount = () => new Promise((resolve) => {
       const unmount = () => {
@@ -438,6 +440,166 @@ export class MFY_Element extends HTMLElement {
         const nextUrl = resolvePath(href, uri)
         jsvm.window.history.pushState(null, null, nextUrl)
       }
+    })
+  }
+
+  async createBox() {
+    const root = this
+
+    // 为placeholder做准备
+    this.wait = (innerHTML) => {
+      root.innerHTML = innerHTML
+    }
+    this._readyResolve()
+
+    const box = document.createElement('div')
+
+    let _transition = ''
+    let _updating = false
+    let _mounted = false
+
+    this.sandbox = box
+    box.classList.add('mfy-sandbox')
+
+    const name = this.getAttribute('name')
+
+    this.mount = async ({ styles, scripts, elements }, options = {}) => {
+      // 置空
+      if (this.wait) {
+        root.innerHTML = ''
+        this.wait = null
+      }
+
+      const { params } = options
+
+      const setElementAttributes = (el, attributes, excludes = []) => {
+        attributes.filter(item => !excludes.includes(item.name)).forEach(({ name, value }) => el.setAttribute(name, value))
+      }
+      const getElementByHtml = (html) => {
+        const el = document.createElement('div')
+        el.innerHTML = html
+        const target = el.children[0]
+        return target
+      }
+
+      // 挂载全局样式
+      const style = document.createElement('style')
+      style.textContent = cssText
+      style.setAttribute('mfy-app-name', name)
+      box.appendChild(style) // 直接加载到当前文档
+      // 挂载当前应用样式
+      styles.forEach((style) => {
+        if (style.rules && style.rules.length) {
+          const { rules, attributes } = style
+          const ruleTexts = rules.map((rule) => {
+            const { selector, content } = rule
+            const names = selector.split(',').map(str => str.trim()).map((name) => {
+              const namespace = `mfy-app[name=${name}]`
+              if (name.startsWith('html') || name.startsWith('body')) {
+                return name.replace('html', namespace)
+              }
+              else {
+                return namespace + ' ' + name
+              }
+            })
+            const ruleText = names.join(', ') + '{' + content + '}'
+            return ruleText
+          })
+
+          const cssText = ruleTexts.join('\n')
+          const el = document.createElement('style')
+
+          setElementAttributes(el, attributes)
+          el.setAttribute('mfy-app-name', name)
+          el.textContent = cssText
+          box.appendChild(el)
+        }
+        else {
+          const el = getElementByHtml(style.outerHTML)
+          el.setAttribute('mfy-app-name', name)
+          box.appendChild(el)
+        }
+      })
+
+      // 挂载html
+      const html = elements.map(el => el.outerHTML).join('\n')
+      box.innerHTML = html
+      // 整体挂载上去
+      root.appendChild(box)
+
+      if (params && typeof params === 'object') {
+        const { transition } = params
+        if (transition) {
+          _transition = transition
+          box.classList.add(transition)
+          box.classList.add(transition + '-in')
+          setTimeout(() => {
+            box.classList.remove(transition + '-in')
+          }, 10)
+        }
+        else {
+          box.classList.add('show')
+        }
+      }
+      else {
+        box.classList.add('show')
+      }
+
+      // 如果已经挂载过脚本了，就不在挂载了，脚本具有运行时状态特征，不能重复挂载
+      if (!_mounted) {
+        await asyncIterate(scripts, async (script) => {
+          const { type, attributes, textContent, src } = script
+          const el = document.createElement('script')
+          const ready = () => new Promise((resolve, reject) => {
+            el.onload = resolve
+            el.onerror = reject
+          })
+
+          setElementAttributes(el, attributes, ['src'])
+          el.setAttribute('mfy-app-name', name)
+
+          if (!src) {
+            el.textContent = textContent
+          }
+          // src经过相对路径处理，不能使用原始src
+          else {
+            el.src = src
+          }
+
+          // 直接挂载在document上面
+          document.body.appendChild(el)
+          await ready()
+        })
+      }
+
+      _mounted = true
+      this.emit('mount')
+    }
+    this.unmount = () => new Promise((resolve) => {
+      const unmount = () => {
+        root.removeChild(box)
+        this.emit('unmount')
+        resolve()
+      }
+      if (_transition) {
+        box.classList.add(_transition + '-out')
+        setTimeout(() => {
+          box.classList.remove(_transition + '-out')
+          unmount()
+        }, 500)
+      }
+      else {
+        unmount()
+      }
+    })
+    this.update = () => new Promise((resolve) => {
+      _updating = true // 标记，避免外部修改内部url时，内部还进行事件抛出
+      const updatedCallback = () => {
+        _updating = false
+        this.emit('update')
+        resolve()
+      }
+      setTimeout(updatedCallback)
     })
   }
 
