@@ -576,11 +576,11 @@ async function parseSourceText(source) {
     }
   }
   const pushScriptNode = async (node) => {
-    const { outerHTML, attributes, type = 'text/javascript', textContent } = node
+    const { outerHTML, attributes, type, textContent } = node
     const res = {
       outerHTML,
       attributes: buildAttributes(attributes),
-      type,
+      type: type || 'text/javascript',
     }
 
     if (node.src) {
