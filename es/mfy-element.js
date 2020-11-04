@@ -122,74 +122,64 @@ export class MFY_Element extends HTMLElement {
     iframe.sandbox = 'allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-modals'
     iframe.src = 'about:blank'
 
-    // 必须强制实现的接口
-    this.update = (url, params) => new Promise((resolve) => {
-      _updating = true // 标记，避免外部修改内部url时，内部还进行事件抛出
-      const updatedCallback = () => {
-        _updating = false
-        this.emit('update')
-        resolve()
-        // iframe.removeEventListener('load', updatedCallback)
-      }
-      // iframe.addEventListener('load', updatedCallback)
-      setTimeout(updatedCallback) // 如果url没有发生变化，不会触发load事件，所以不能使用监听事件的方法
-
+    const updateIframeSrc = (url, params) => {
       if (params && typeof params === 'object') {
         const { uri } = params
-        iframe.src = resolvePath(url, uri)
+        const src = resolvePath(url, uri)
+        if (!(iframe.src && iframe.src.endsWith(src))) {
+          iframe.src = src
+        }
       }
       else if (params && typeof params === 'string') {
-        iframe.src = resolvePath(url, params)
+        const src = resolvePath(url, params)
+        if (!(iframe.src && iframe.src.endsWith(src))) {
+          iframe.src = src
+        }
       }
       else {
-        iframe.src = url
+        if (!(iframe.src && iframe.src.endsWith(url))) {
+          iframe.src = url
+        }
       }
-    })
+    }
+
+    // 必须强制实现的接口
     this.mount = (url, params) => new Promise((resolve, reject) => {
       if (this.wait) {
         shadowRoot.innerHTML = '' // 清空所有内容
         this.wait = null // 删除该接口
       }
 
-      if (!_mounted) {
-        iframe.onload = () => {
-          const win = iframe.contentWindow
-          if (win) {
-            this.emit('mount')
-            resolve()
+      iframe.onload = () => {
+        const win = iframe.contentWindow
+        if (win) {
+          this.emit('mount')
+          resolve()
 
-            const reactive = debounce((event) => {
-              // 外部迫使内部发生变化时，不会抛出事件
-              if (_updating) {
-                return
-              }
-              const info = getLocation(win)
-              // 对外抛出urlchange是可选的，但是最好都实现
-              this.emit('urlchange', { ...info, type: 'change:' + event })
-            }, 100)
-            win.addEventListener('popstate', () => reactive('popstate'))
-            win.addEventListener('pushState', () => reactive('pushState'))
-            win.addEventListener('replaceState', () => reactive('replaceState'))
-            win.addEventListener('hashchange', () => reactive('hashchange'))
-          }
-        }
-        iframe.onerror = reject
+          iframe.onload = () => {}
+          iframe.onerror = () => {}
 
-        if (params && typeof params === 'object') {
-          const { uri } = params
-          iframe.src = resolvePath(url, uri)
+          const reactive = debounce((event) => {
+            // 外部迫使内部发生变化时，不会抛出事件
+            if (_updating) {
+              return
+            }
+            const info = getLocation(win)
+            // 对外抛出urlchange是可选的，但是最好都实现
+            this.emit('urlchange', { ...info, type: 'change:' + event })
+          }, 100)
+          win.addEventListener('popstate', () => reactive('popstate'))
+          win.addEventListener('pushState', () => reactive('pushState'))
+          win.addEventListener('replaceState', () => reactive('replaceState'))
+          win.addEventListener('hashchange', () => reactive('hashchange'))
         }
-        else if (params && typeof params === 'string') {
-          iframe.src = resolvePath(url, params)
-        }
-        else {
-          iframe.src = url
-        }
-
-        _mounted = true
       }
-      else {
-        this.update(url, params)
+      iframe.onerror = reject
+
+      updateIframeSrc(url, params)
+
+      if (!_mounted) {
+        _mounted = true
       }
 
       shadowRoot.appendChild(style)
@@ -224,6 +214,19 @@ export class MFY_Element extends HTMLElement {
       else {
         unmount()
       }
+    })
+    this.update = (url, params) => new Promise((resolve) => {
+      _updating = true // 标记，避免外部修改内部url时，内部还进行事件抛出
+      const updatedCallback = () => {
+        _updating = false
+        this.emit('update')
+        resolve()
+        // iframe.removeEventListener('load', updatedCallback)
+      }
+      // iframe.addEventListener('load', updatedCallback)
+      setTimeout(updatedCallback) // 如果url没有发生变化，不会触发load事件，所以不能使用监听事件的方法
+
+      updateIframeSrc(url, params)
     })
   }
 
@@ -265,25 +268,18 @@ export class MFY_Element extends HTMLElement {
     win.addEventListener('replaceState', () => reactive('replaceState'))
     win.addEventListener('hashchange', () => reactive('hashchange'))
 
-    // 必须强制实现的接口
-    this.update = (params = {}) => new Promise((resolve) => {
-      _updating = true // 标记，避免外部修改内部url时，内部还进行事件抛出
-      const updatedCallback = () => {
-        _updating = false
-        this.emit('update')
-        resolve()
-        // iframe.removeEventListener('load', updatedCallback)
-      }
-      // iframe.addEventListener('load', updatedCallback)
-      setTimeout(updatedCallback) // 如果url没有发生变化，不会触发load事件，所以不能使用监听事件的方法
-
+    const updateInnerUrl = (params) => {
       if (params && typeof params === 'object') {
         const { uri } = params
         const href = jsvm.window.location.href
         const nextUrl = resolvePath(href, uri)
-        jsvm.window.history.pushState(null, null, nextUrl)
+        if (href !== nextUrl) {
+          jsvm.window.history.pushState(null, null, nextUrl)
+        }
       }
-    })
+    }
+
+    // 必须强制实现的接口
     this.mount = async ({ styles, scripts, elements }, params = {}) => {
       // 置空
       if (this.wait) {
@@ -291,14 +287,8 @@ export class MFY_Element extends HTMLElement {
         this.wait = null
       }
 
+      // 仅第一次渲染
       if (!_mounted) {
-        const getElementByHtml = (html) => {
-          const el = document.createElement('div')
-          el.innerHTML = html
-          const target = el.children[0]
-          return target
-        }
-
         const styleEls = styles.map((style) => {
           if (style.rules && style.rules.some(rule => rule.selector.indexOf('html') > -1 || rule.selector.indexOf('body') > -1)) {
             const ruleTexts = style.rules.map(rule => rule.cssText.replace('html', '.mfy-sandbox').replace('body', '.mfy-sandbox'))
@@ -371,12 +361,11 @@ export class MFY_Element extends HTMLElement {
           }
         })
 
-        this.emit('mount')
         _mounted = true
       }
-      else {
-        this.update(params)
-      }
+
+      updateInnerUrl(params)
+      this.emit('mount')
     }
     this.unmount = () => new Promise((resolve) => {
       const unmount = () => {
@@ -395,6 +384,19 @@ export class MFY_Element extends HTMLElement {
       else {
         unmount()
       }
+    })
+    this.update = (params = {}) => new Promise((resolve) => {
+      _updating = true // 标记，避免外部修改内部url时，内部还进行事件抛出
+      const updatedCallback = () => {
+        _updating = false
+        this.emit('update')
+        resolve()
+        // iframe.removeEventListener('load', updatedCallback)
+      }
+      // iframe.addEventListener('load', updatedCallback)
+      setTimeout(updatedCallback) // 如果url没有发生变化，不会触发load事件，所以不能使用监听事件的方法
+
+      updateInnerUrl(params)
     })
   }
 
@@ -458,15 +460,6 @@ export class MFY_Element extends HTMLElement {
       }
     `
 
-    this.update = () => new Promise((resolve) => {
-      _updating = true // 标记，避免外部修改内部url时，内部还进行事件抛出
-      const updatedCallback = () => {
-        _updating = false
-        this.emit('update')
-        resolve()
-      }
-      setTimeout(updatedCallback)
-    })
     this.mount = async ({ styles, scripts, elements }, params) => {
       // 置空
       if (this.wait) {
@@ -551,9 +544,10 @@ export class MFY_Element extends HTMLElement {
       }
 
       // 如果已经挂载过脚本了，就不在挂载了，脚本具有运行时状态特征，不能重复挂载
+      // 脚本要box挂载到root之后执行，否则DOM可能不存在
       if (!_mounted) {
         await asyncIterate(scripts, async (script) => {
-          const { type, attributes, textContent, src } = script
+          const { attributes, textContent, src } = script
           const el = document.createElement('script')
           const ready = () => new Promise((resolve, reject) => {
             el.onload = resolve
@@ -576,11 +570,9 @@ export class MFY_Element extends HTMLElement {
           await ready()
         })
         _mounted = true
-        this.emit('mount')
       }
-      else {
-        this.update(params)
-      }
+
+      this.emit('mount')
     }
     this.unmount = () => new Promise((resolve) => {
       const unmount = () => {
@@ -598,6 +590,15 @@ export class MFY_Element extends HTMLElement {
       else {
         unmount()
       }
+    })
+    this.update = () => new Promise((resolve) => {
+      _updating = true // 标记，避免外部修改内部url时，内部还进行事件抛出
+      const updatedCallback = () => {
+        _updating = false
+        this.emit('update')
+        resolve()
+      }
+      setTimeout(updatedCallback)
     })
   }
 
