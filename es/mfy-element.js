@@ -498,14 +498,18 @@ export class MFY_Element extends HTMLElement {
               const { selector, content } = rule
               const names = selector.split(',').map(str => str.trim()).map((selector) => {
                 const namespace = `mfy-app[name=${name}]`
-                if (selector.startsWith('html') || selector.startsWith('body')) {
+                if (selector.startsWith('html')) {
                   return selector.replace('html', namespace)
+                }
+                else if (selector.startsWith('body')) {
+                  return selector.replace('body', namespace)
                 }
                 else {
                   return namespace + ' ' + selector
                 }
               })
-              const ruleText = names.join(', ') + ' {' + content + '}'
+              const selectors = names.reduce((items, item) => items.includes(item) ? items : [...items, item], [])
+              const ruleText = selectors.join(', ') + ' { ' + content + ' }'
               return ruleText
             })
 

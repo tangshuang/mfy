@@ -24,7 +24,7 @@
 <div>对于一个微应用而言，非常容易</div>
 <button id="changeUrl">Change URL</button>
 <div id="root">
-  {{title}}
+  <div>hash: <span id="hash"></span></div>
 </div>
 
 <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -36,6 +36,8 @@
 </script>
 <script script-name="xxx">
   document.querySelector('#changeUrl').addEventListener('click', () => {
-    window.location.hash = '#' + Math.random()
+    const hash = '#' + Math.random()
+    window.location.hash = hash
+    document.querySelector('#hash').innerHTML = hash
   })
 </script>

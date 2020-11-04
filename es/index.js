@@ -258,6 +258,41 @@ function createApp(parentScope, options) {
     placeholder && !source.fetched && element.wait && element.wait(typeof placeholder === 'function' ? placeholder() : placeholder)
     await source.ready()
 
+    // 在主环境创建hoist样式
+    const hoistStyle = (styles) => {
+      if (!hoistCssRules) {
+        return
+      }
+
+      const rules = []
+      styles.forEach((style) => {
+        if (!style.rules) {
+          return
+        }
+        style.rules.forEach((rule) => {
+          const res = hoistCssRules(rule)
+          if (res && typeof res === 'string') {
+            rules.push(res)
+          }
+        })
+      })
+
+      const id = 'mfy-hoist-style-' + name
+
+      // 卸载原有的样式块
+      const el = document.querySelector('style#' + id)
+      if (el) {
+        el.parentNode.removeChild(el)
+      }
+
+      const styleEl = document.createElement('style')
+      const textContent = '\n' + rules.join('\n') + '\n'
+
+      styleEl.id = id
+      styleEl.textContent = textContent
+      document.head.appendChild(styleEl)
+    }
+
     if (type === 'iframe') {
       const { url } = source
       await element.mount(url, params)
@@ -265,35 +300,7 @@ function createApp(parentScope, options) {
     else if (type === 'shadowdom') {
       const { styles, scripts, elements } = await parseSourceText(source)
 
-      if (hoistCssRules) {
-        const rules = []
-        styles.forEach((style) => {
-          if (!style.rules) {
-            return
-          }
-          style.rules.forEach((rule) => {
-            const res = hoistCssRules(rule)
-            if (res && typeof res === 'string') {
-              rules.push(res)
-            }
-          })
-        })
-
-        const id = 'mfy-hoist-style-' + name
-
-        // 卸载原有的样式块
-        const el = document.querySelector('style#' + id)
-        if (el) {
-          el.parentNode.removeChild(el)
-        }
-
-        const styleEl = document.createElement('style')
-        styleEl.id = id
-
-        const textContent = '\n' + rules.join('\n') + '\n'
-        styleEl.textContent = textContent
-        document.head.appendChild(styleEl)
-      }
+      hoistStyle(styles)
 
       await element.mount({ styles, scripts, elements }, {
         ...params,
@@ -306,6 +313,7 @@ function createApp(parentScope, options) {
     }
     else {
       const { styles, scripts, elements } = await parseSourceText(source)
+      hoistStyle(styles)
       await element.mount({ styles, scripts, elements }, params)
     }
   }
@@ -341,7 +349,7 @@ function createApp(parentScope, options) {
     app.mounted = null
 
     // 卸载污染的样式块
-    if (hoistCssRules && type === 'shadowdom') {
+    if (hoistCssRules) {
       const id = 'mfy-hoist-style-' + name
       const el = document.querySelector('style#' + id)
       if (el) {
