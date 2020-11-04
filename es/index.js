@@ -245,7 +245,7 @@ function createApp(parentScope, options) {
     })
   }
 
-  async function mount(params) {
+  async function mount(params = {}) {
     const { type, source, element, scope, hoistCssRules, name } = app
     app.mounted = { params }
 
@@ -296,7 +296,7 @@ function createApp(parentScope, options) {
       }
 
       await element.mount({ styles, scripts, elements }, {
-        params,
+        ...params,
         // 运行资源内的脚本
         // 脚本内部可能会产生新的子应用
         globalVars: {
@@ -306,7 +306,7 @@ function createApp(parentScope, options) {
     }
     else {
       const { styles, scripts, elements } = await parseSourceText(source)
-      await element.mount({ styles, scripts, elements }, { params })
+      await element.mount({ styles, scripts, elements }, params)
     }
   }
 
@@ -330,7 +330,7 @@ function createApp(parentScope, options) {
       await element.update(url, params)
     }
     else {
-      await element.update({ params })
+      await element.update(params)
     }
   }
 
@@ -503,7 +503,7 @@ async function parseSourceText(source) {
         const { type, cssText } = rule
         const res = { type, cssText }
         if (type === 1) {
-          const text = buildContent(cssText, res.selector)
+          const text = buildContent(cssText, rule.selectorText)
           const content = replaceCssUrl(text, url)
           res.selector = rule.selectorText
           res.content = content

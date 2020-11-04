@@ -86,8 +86,7 @@
 
   const app3 = registerMicroApp({
     name: 'app3',
-    source: () => importSource('https://baidu.com'),
-    type: 'iframe',
+    source: () => importSource('./micro-apps/app3.html'),
   })
 
   registerRouter({
