@@ -92,7 +92,7 @@ export class MFY_Element extends HTMLElement {
       app.element = this
       await app.createSandbox()
       // 如果当前app应该被渲染，那么直接渲染它
-      app.mounted && await app.mount(app.mounted.params)
+      app.mounted && await app.mount({ ...app.mounted.params, reconnect: true })
     }
   }
 
@@ -187,11 +187,17 @@ export class MFY_Element extends HTMLElement {
 
       if (params && typeof params === 'object' && params.transition) {
         _transition = params.transition
-        iframe.classList.add(_transition)
-        iframe.classList.add(_transition + '-in')
-        setTimeout(() => {
-          iframe.classList.remove(_transition + '-in')
-        }, 10)
+        // 如果是重新被挂载进文档，直接显示出来，而不是动画效果出现
+        if (params.reconnect) {
+          iframe.classList.add('show')
+        }
+        else {
+          iframe.classList.add(_transition)
+          iframe.classList.add(_transition + '-in')
+          setTimeout(() => {
+            iframe.classList.remove(_transition + '-in')
+          }, 10)
+        }
       }
       else {
         iframe.classList.add('show')
@@ -310,11 +316,16 @@ export class MFY_Element extends HTMLElement {
 
       if (params && typeof params === 'object' && params.transition) {
         _transition = params.transition
-        vmbox.classList.add(_transition)
-        vmbox.classList.add(_transition + '-in')
-        setTimeout(() => {
-          vmbox.classList.remove(_transition + '-in')
-        }, 10)
+        if (params.reconnect) {
+          iframe.classList.add('show')
+        }
+        else {
+          vmbox.classList.add(_transition)
+          vmbox.classList.add(_transition + '-in')
+          setTimeout(() => {
+            vmbox.classList.remove(_transition + '-in')
+          }, 10)
+        }
       }
       else {
         vmbox.classList.add('show')
@@ -533,11 +544,16 @@ export class MFY_Element extends HTMLElement {
 
       if (params && typeof params === 'object' && params.transition) {
         _transition = params.transition
-        box.classList.add(_transition)
-        box.classList.add(_transition + '-in')
-        setTimeout(() => {
-          box.classList.remove(_transition + '-in')
-        }, 10)
+        if (params.reconnect) {
+          iframe.classList.add('show')
+        }
+        else {
+          box.classList.add(_transition)
+          box.classList.add(_transition + '-in')
+          setTimeout(() => {
+            box.classList.remove(_transition + '-in')
+          }, 10)
+        }
       }
       else {
         box.classList.add('show')
