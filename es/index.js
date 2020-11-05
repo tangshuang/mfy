@@ -297,20 +297,6 @@ function createApp(parentScope, options) {
       const { url } = source
       await element.mount(url, params)
     }
-    else if (type === 'shadowdom') {
-      const { styles, scripts, elements } = await parseSourceText(source)
-
-      hoistStyle(styles)
-
-      await element.mount({ styles, scripts, elements }, {
-        ...params,
-        // 运行资源内的脚本
-        // 脚本内部可能会产生新的子应用
-        globalVars: {
-          __MFY_SCOPE__: scope,
-        },
-      })
-    }
     else {
       const { styles, scripts, elements } = await parseSourceText(source)
       hoistStyle(styles)

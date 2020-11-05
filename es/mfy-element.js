@@ -276,10 +276,13 @@ export class MFY_Element extends HTMLElement {
 
     const updateInnerUrl = (params) => {
       if (params && typeof params === 'object') {
-        const { uri } = params
+        const { uri, replace } = params
         const href = jsvm.window.location.href
         const nextUrl = resolvePath(href, uri)
-        if (href !== nextUrl) {
+        if (href !== nextUrl && replace) {
+          jsvm.window.history.replaceState(null, null, nextUrl)
+        }
+        else if (href !== nextUrl) {
           jsvm.window.history.pushState(null, null, nextUrl)
         }
       }
@@ -317,7 +320,7 @@ export class MFY_Element extends HTMLElement {
       if (params && typeof params === 'object' && params.transition) {
         _transition = params.transition
         if (params.reconnect) {
-          iframe.classList.add('show')
+          vmbox.classList.add('show')
         }
         else {
           vmbox.classList.add(_transition)
@@ -335,8 +338,6 @@ export class MFY_Element extends HTMLElement {
         const setElementAttributes = (el, attributes, excludes = []) => {
           attributes.filter(item => !excludes.includes(item.name)).forEach(({ name, value }) => el.setAttribute(name, value))
         }
-        const { globalVars } = params
-
         await asyncIterate(scripts, async (script) => {
           const { type, attributes, textContent, src } = script
           const el = document.createElement('script')
@@ -363,12 +364,12 @@ export class MFY_Element extends HTMLElement {
           else if (src) {
             setElementAttributes(el, attributes, ['src'])
             vmbox.appendChild(el)
-            await runScriptInSandbox(textContent, jsvm, { ...globalVars, currenctScript: el })
+            await runScriptInSandbox(textContent, jsvm, { currenctScript: el })
           }
           else {
             setElementAttributes(el, attributes)
             vmbox.appendChild(el)
-            await runScriptInSandbox(textContent, jsvm, globalVars)
+            await runScriptInSandbox(textContent, jsvm)
           }
         })
 
@@ -545,7 +546,7 @@ export class MFY_Element extends HTMLElement {
       if (params && typeof params === 'object' && params.transition) {
         _transition = params.transition
         if (params.reconnect) {
-          iframe.classList.add('show')
+          box.classList.add('show')
         }
         else {
           box.classList.add(_transition)
