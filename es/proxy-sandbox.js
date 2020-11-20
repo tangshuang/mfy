@@ -1,8 +1,8 @@
-export function createProxyElement(element, basic = {}) {
-  return new Proxy({ ...basic }, {
+export function createProxyElement(element, fakeObj = {}) {
+  return new Proxy(fakeObj, {
     get(target, key) {
-      const value = key in target ? Reflect.get(target, key) : Reflect.get(element, key)
-      return typeof value === 'function' ? (key in target ? value.bind(target) : value.bind(element)) : value
+      const value = key in target || target[key] ? Reflect.get(target, key) : Reflect.get(element, key)
+      return typeof value === 'function' ? (key in target || target[key] ? value.bind(target) : value.bind(element)) : value
     },
   })
 }
