@@ -142,9 +142,6 @@
     el.setAttribute('name', 'app1')
     $('#app main').appendChild(el)
   })
-  $('#handleSearch').addEventListener('click', () => {
-    navigate('#app3?wd=' + $('#searchText').value)
-  })
 
   if (window.location.hash.includes('?')) {
     const search = window.location.hash.split('?').pop()

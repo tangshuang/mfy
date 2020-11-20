@@ -1,8 +1,9 @@
-export function createProxyElement(element, fakeObj = {}) {
-  return new Proxy(fakeObj, {
-    get(target, key) {
-      const value = key in target || target[key] ? Reflect.get(target, key) : Reflect.get(element, key)
-      return typeof value === 'function' ? (key in target || target[key] ? value.bind(target) : value.bind(element)) : value
+export function createProxyElement(element, fakeElement = {}) {
+  return new Proxy(fakeElement, {
+    get(_, key) {
+      const el = typeof fakeElement[key] !== 'undefined' ? fakeElement : element
+      const value = el[key]
+      return typeof value === 'function' ? value.bind(el) : value
     },
   })
 }
@@ -106,7 +107,7 @@ export async function createProxyWindow(win = window, basic = {}) {
   })
 }
 
-export async function createSandboxGlobalObjects(fakeGlobalObjects = {}) {
+export async function createSandboxGlobalObject(fakeGlobalObjects = {}) {
   const fakeDocument = fakeGlobalObjects.document || createProxyDocument(document)
   const fakeWindow = fakeGlobalObjects.window || await createProxyWindow(window, { document: fakeDocument })
   const { history, location } = fakeWindow
@@ -114,7 +115,7 @@ export async function createSandboxGlobalObjects(fakeGlobalObjects = {}) {
 }
 
 export async function runScriptInSandbox(scriptCode, sandbox, injectGlobalVars = {}) {
-  const { window, document, location, history } = sandbox || await createSandboxGlobalObjects()
+  const { window, document, location, history } = sandbox || await createSandboxGlobalObject()
   const varNames = Object.keys(injectGlobalVars)
 
   const resolver = new Function(`

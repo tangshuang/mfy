@@ -1,5 +1,5 @@
 import { getTopElement, resolvePath, getLocation, asyncIterate, debounce } from './utils/utils.js'
-import { createSandboxGlobalObjects, runScriptInSandbox, createProxyDocument, createProxyElement } from './proxy-sandbox.js'
+import { createSandboxGlobalObject, runScriptInSandbox, createProxyDocument, createProxyElement } from './proxy-sandbox.js'
 
 const cssText = `
   :host {
@@ -255,7 +255,7 @@ export class MFY_Element extends HTMLElement {
     const fakeDoc = createProxyElement(document, fakeEl)
     const vdoc = createProxyDocument(fakeDoc)
 
-    const jsvm = await createSandboxGlobalObjects({ document: vdoc })
+    const jsvm = await createSandboxGlobalObject({ document: vdoc })
 
     let _transition = ''
     let _updating = false
