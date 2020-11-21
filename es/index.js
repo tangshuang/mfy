@@ -184,7 +184,7 @@ function createApp(parentScope, options) {
     }
 
     const scope = createScope(app.source.url, parentScope)
-    const element = document.querySelector(`mfy-app[name=${name}]`)
+    const element = document.querySelector(`mfy-app[name="${name}"]`)
 
     if (!element) {
       throw new Error(`文档中不存在 mfy-app[name=${name}] 元素`)
@@ -241,7 +241,7 @@ function createApp(parentScope, options) {
   }
 
   async function mount(params = {}) {
-    const { type, source, element, scope, hoistCssRules, name } = app
+    const { type, source, element, hoistCssRules, name } = app
     app.mounted = { params }
 
     // element可能已经被销毁
@@ -643,14 +643,17 @@ async function parseSourceText(source) {
 
 // 注册元素
 if (!customElements.get('mfy-app')) {
-  let createdMfyElement = 0
+  let createdNonNameMfyElement = 0
   class MfyElement extends MFY_Element {
     init() {
       const name = this.getAttribute('name')
       const source = this.getAttribute('source')
       const type = this.getAttribute('type')
+      const count = Array.from(document.querySelectorAll(`mfy-app[source="${source}"]`)).filter(node => node !== this).length
 
-      const n = name || source.replace(/[^0-9a-z-]/gi, '')
+      const n = name ? name
+        : !count ? source
+        : ('mfy-non-name-' + (createdNonNameMfyElement++) + '-' + source)
 
       // 如果直接传入了source而没有传name，表示这是一个直接加载式而非注册式的子应用
       if (source) {
@@ -674,6 +677,23 @@ if (!customElements.get('mfy-app')) {
           scope.apps.push(app)
         }
       }
+    }
+    disconnectedCallback() {
+      // 释放内存（仅当一个页面中存在多个相同source且name没有的情况下，如果只有一个，会使用缓存）
+      const source = this.getAttribute('source')
+      const rootElement = getTopElement(this)
+      if (source && rootElement.__apps) {
+        const count = Array.from(document.querySelectorAll(`mfy-app[source="${source}"]`)).filter(node => node !== this).length
+        if (count) {
+          const name = this.getAttribute('name')
+          if (name.startsWith('mfy-non-name-')) {
+            const index = rootElement.__apps.findIndex(app => app.name === name)
+            rootElement.__apps.splice(index, 1)
+          }
+        }
+      }
+
+      return super.disconnectedCallback()
     }
   }
   customElements.define('mfy-app', MfyElement)

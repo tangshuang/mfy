@@ -438,42 +438,42 @@ export class MFY_Element extends HTMLElement {
 
     const name = this.getAttribute('name')
     const cssText = `
-      mfy-app[name=${name}] {
+      mfy-app[name="${name}"] {
         display: block;
         overflow: hidden;
         flex: 1;
         width: 100%;
         height: 100%;
       }
-      mfy-app[name=${name}] .mfy-sandbox {
+      mfy-app[name="${name}"] .mfy-sandbox {
         width: 100%;
         height: 100%;
         border: 0;
         display: none;
       }
-      mfy-app[name=${name}] .mfy-sandbox.show {
+      mfy-app[name="${name}"] .mfy-sandbox.show {
         display: block;
       }
 
-      mfy-app[name=${name}] .mfy-sandbox.fade {
+      mfy-app[name="${name}"] .mfy-sandbox.fade {
         display: block;
         opacity: 1;
         transition: opacity .5s;
       }
-      mfy-app[name=${name}] .mfy-sandbox.fade-in,
-      mfy-app[name=${name}] .mfy-sandbox.fade-out {
+      mfy-app[name="${name}"] .mfy-sandbox.fade-in,
+      mfy-app[name="${name}"] .mfy-sandbox.fade-out {
         opacity: 0;
       }
 
-      mfy-app[name=${name}] .mfy-sandbox.slide {
+      mfy-app[name="${name}"] .mfy-sandbox.slide {
         display: block;
         transform: none;
         transition: transform .5s;
       }
-      mfy-app[name=${name}] .mfy-sandbox.slide-in {
+      mfy-app[name="${name}"] .mfy-sandbox.slide-in {
         transform: translateX(100%);
       }
-      mfy-app[name=${name}] .mfy-sandbox.slide-out {
+      mfy-app[name="${name}"] .mfy-sandbox.slide-out {
         transform: translateX(-100%);
       }
     `
@@ -509,7 +509,7 @@ export class MFY_Element extends HTMLElement {
             const ruleTexts = rules.map((rule) => {
               const { selector, content } = rule
               const names = selector.split(',').map(str => str.trim()).map((selector) => {
-                const namespace = `mfy-app[name=${name}]`
+                const namespace = `mfy-app[name="${name}"]`
                 if (selector.startsWith('html')) {
                   return selector.replace('html', namespace)
                 }
