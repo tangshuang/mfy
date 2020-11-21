@@ -4,9 +4,9 @@
   main {
     position: relative;
     width: 800px;
-    height: 600px;
+    height: 300px;
   }
-  mfy-app {
+  main mfy-app {
     position: absolute;
     top: 0;
     left: 0;
@@ -28,6 +28,7 @@
     <mfy-app name="app2"></mfy-app>
     <mfy-app name="app3"></mfy-app>
   </main>
+  <mfy-app source="./micro-apps/app4.html"></mfy-app>
 </div>
 
 <script>
@@ -114,7 +115,7 @@
         match: () => window.location.hash.startsWith('#app3'),
         map: ({ hash }) => {
           const [, search] = hash.split('?')
-          return search ? 'https://baidu.com/s?' + search : ''
+          return search ? '?' + search : ''
         },
       },
     ],

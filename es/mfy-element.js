@@ -48,6 +48,7 @@ export class MFY_Element extends HTMLElement {
 
     this._listeners = []
     this.ready(true)
+    this.init()
   }
 
   ready(create) {
@@ -484,10 +485,11 @@ export class MFY_Element extends HTMLElement {
         this.wait = null
       }
 
+      const setElementAttributes = (el, attributes, excludes = []) => {
+        attributes.filter(item => !excludes.includes(item.name)).forEach(({ name, value }) => el.setAttribute(name, value))
+      }
+
       if (!_mounted) {
-        const setElementAttributes = (el, attributes, excludes = []) => {
-          attributes.filter(item => !excludes.includes(item.name)).forEach(({ name, value }) => el.setAttribute(name, value))
-        }
         const getElementByHtml = (html) => {
           const el = document.createElement('div')
           el.innerHTML = html

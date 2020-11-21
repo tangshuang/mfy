@@ -67,7 +67,7 @@ export function getTopWindow() {
 
 export function getTopElement(element) {
   let root = element
-  while (root.parentNode) {
+  while (root.parentNode || (root !== element && root.nodeName === 'MFY-APP')) {
     root = root.parentNode
   }
   return root

@@ -7,11 +7,6 @@ import {
 } from './utils/utils.js'
 import MFY_Element from './mfy-element.js'
 
-// 注册元素
-if (!customElements.get('mfy-app')) {
-  customElements.define('mfy-app', MFY_Element)
-}
-
 const _setScopeToTopWindow = (scope) => {
   const win = getTopWindow()
   win.__MFY_SCOPE__ = scope
@@ -644,4 +639,42 @@ async function parseSourceText(source) {
   source.elements = elements
 
   return { styles, scripts, elements }
+}
+
+// 注册元素
+if (!customElements.get('mfy-app')) {
+  let createdMfyElement = 0
+  class MfyElement extends MFY_Element {
+    init() {
+      const name = this.getAttribute('name')
+      const source = this.getAttribute('source')
+      const type = this.getAttribute('type')
+
+      const n = name || source.replace(/[^0-9a-z-]/gi, '')
+
+      // 如果直接传入了source而没有传name，表示这是一个直接加载式而非注册式的子应用
+      if (source) {
+        // 该app还没有被注册过，才会执行regsiterMicroApp，如果已经执行过了，就没有必要
+        const rootElement = getTopElement(this)
+        const app = rootElement.__apps && rootElement.__apps.find(app => app.name === n)
+        if (!app) {
+          // 重写name属性，这样可以在registerMicroApp中被查询到
+          if (!name) {
+            this.setAttribute('name', n)
+          }
+
+          // 启动应用
+          const scope = connectScope()
+          const app = createApp(scope, {
+            name: n,
+            source: () => importSource(source),
+            type,
+            autoMount: true,
+          })
+          scope.apps.push(app)
+        }
+      }
+    }
+  }
+  customElements.define('mfy-app', MfyElement)
 }
