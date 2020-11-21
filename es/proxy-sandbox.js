@@ -3,7 +3,7 @@ export function createProxyElement(element, fakeElement = {}) {
     get(_, key) {
       const el = typeof fakeElement[key] !== 'undefined' ? fakeElement : element
       const value = el[key]
-      return typeof value === 'function' ? value.bind(proxy) : value
+      return typeof value === 'function' ? value.bind(element) : value
     },
   })
   return proxy
