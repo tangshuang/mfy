@@ -11,7 +11,7 @@
 - 支持路由映射，不需要对子应用进行修改的情况下，把外层的url映射为内层url
 - 动画过渡效果
 
-[快速体验小DEMO](https://unpkg.com/mfy@0.0.7/spec/index.html)
+[快速体验小DEMO](https://unpkg.com/mfy@latest/spec/index.html)
 
 ## 安装
 
