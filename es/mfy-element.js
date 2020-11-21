@@ -248,13 +248,12 @@ export class MFY_Element extends HTMLElement {
     const style = document.createElement('style')
     const vmbox = document.createElement('div')
 
-    const fakeEl = createProxyElement(shadowRoot, {
-      head: shadowRoot,
-      body: shadowRoot,
+    const fakeEl = createProxyElement(vmbox, {
+      head: vmbox,
+      body: vmbox,
     })
     const fakeDoc = createProxyElement(document, fakeEl)
     const vdoc = createProxyDocument(fakeDoc)
-
     const jsvm = await createSandboxGlobalObject({ document: vdoc })
 
     let _transition = ''

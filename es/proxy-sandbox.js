@@ -1,11 +1,12 @@
 export function createProxyElement(element, fakeElement = {}) {
-  return new Proxy(fakeElement, {
+  const proxy = new Proxy(fakeElement, {
     get(_, key) {
       const el = typeof fakeElement[key] !== 'undefined' ? fakeElement : element
       const value = el[key]
-      return typeof value === 'function' ? value.bind(el) : value
+      return typeof value === 'function' ? value.bind(proxy) : value
     },
   })
+  return proxy
 }
 
 export function createProxyDocument(doc = document, basic = {}) {
