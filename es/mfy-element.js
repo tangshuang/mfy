@@ -237,6 +237,7 @@ export class MFY_Element extends HTMLElement {
 
   async createVM() {
     const shadowRoot = this.attachShadow({ mode: 'closed' })
+    const app = this.__app
 
     // 为placeholder做准备
     this.wait = (innerHTML) => {
@@ -342,6 +343,12 @@ export class MFY_Element extends HTMLElement {
         const setElementAttributes = (el, attributes, excludes = []) => {
           attributes.filter(item => !excludes.includes(item.name)).forEach(({ name, value }) => el.setAttribute(name, value))
         }
+        const mountScript = (el, src) => new Promise((resolve, reject) => {
+          el.src = src
+          el.onload = resolve
+          el.onerror = reject
+          vmbox.appendChild(el)
+        })
         await asyncIterate(scripts, async (script) => {
           const { type, attributes, textContent, src } = script
           const el = document.createElement('script')
@@ -353,27 +360,31 @@ export class MFY_Element extends HTMLElement {
           // 仅支持普通javascript在沙箱中运行，不支持其他任何形式在沙箱中运行，所以全部原样输出
           const isScript = type === 'text/javascript'
 
+          // 将script标签进行标记
+          el.__app = app
+
           if (!isScript) {
             setElementAttributes(el, attributes, ['src'])
             if (!src) {
               el.textContent = textContent
+              vmbox.appendChild(el)
             }
             // src经过相对路径处理，不能使用原始src
             else {
-              el.src = src
+              await mountScript(el, src)
             }
-            vmbox.appendChild(el)
             await ready()
           }
-          else if (src) {
+          else if (src && !textContent) {
             setElementAttributes(el, attributes, ['src'])
-            vmbox.appendChild(el)
-            await runScriptInSandbox(textContent, jsvm, { currenctScript: el })
+            await mountScript(el, src)
           }
           else {
-            setElementAttributes(el, attributes)
+            setElementAttributes(el, attributes, src ? ['src'] : [])
             vmbox.appendChild(el)
-            await runScriptInSandbox(textContent, jsvm)
+            jsvm.document.currentScript = el
+            await runScriptInSandbox(textContent, jsvm, { __MFY_SCOPE__: app.scope })
+            jsvm.document.currentScript = null
           }
         })
 

@@ -368,6 +368,11 @@ export function connectScope(root) {
     return win.__MFY_SCOPE__
   }
 
+  // 直接js中运行的脚本
+  if (document.currentScript && document.currentScript.__app) {
+    return document.currentScript.__app.scope
+  }
+
   // 在iframe中启用的子应用
   if (window !== win && window.frameElement) {
     const iframe = window.frameElement
