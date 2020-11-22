@@ -65,12 +65,15 @@ export function getTopWindow() {
   return window.top
 }
 
-export function getTopElement(element) {
-  let root = element
-  while (root.parentNode || (root !== element && root.nodeName === 'MFY-APP')) {
-    root = root.parentNode
+export function getHostElement(element) {
+  let host = element
+  while (host.parentNode || host.host) {
+    host = host.parentNode || host.host
+    if (host.nodeName === 'MFY-APP') {
+      return host
+    }
   }
-  return root
+  return host
 }
 
 export function getLocation(win) {

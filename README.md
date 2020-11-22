@@ -49,16 +49,6 @@ const app = registerMicroApp({
 
 好了，你当前的应用成功加载了子应用。如果没有父子通信的需要，你甚至不需要在子应用中改任何一处。
 
-<details>
-<summary><em>黑魔法：不使用registerMicroApp注册子应用</em></summary>
-
-```html
-<mfy-app source="/apps/sum.html"></mfy-app>
-```
-
-直接通过标签加载一个html的内容，而不需要使用registerMicroApp。这种用法过于粗暴。
-</details>
-
 ## 接口
 
 麦饭的四个接口，`importSource`和`registerMicroApp`为子应用的加载和挂载服务，`connectScope`为父子应用通信服务，`registerRouter`为路由映射服务。

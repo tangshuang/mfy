@@ -1,4 +1,4 @@
-import { getTopElement, resolvePath, getLocation, asyncIterate, debounce } from './utils/utils.js'
+import { getHostElement, resolvePath, getLocation, asyncIterate, debounce } from './utils/utils.js'
 import { createSandboxGlobalObject, runScriptInSandbox, createProxyDocument, createProxyElement } from './proxy-sandbox.js'
 
 const cssText = `
@@ -48,7 +48,6 @@ export class MFY_Element extends HTMLElement {
 
     this._listeners = []
     this.ready(true)
-    this.init()
   }
 
   ready(create) {
@@ -85,13 +84,12 @@ export class MFY_Element extends HTMLElement {
   async connectedCallback() {
     // 通过读取app来重新设置app的element
     const name = this.getAttribute('name')
-    const rootElement = getTopElement(this)
-    const app = rootElement.__apps && rootElement.__apps.find(app => app.name === name)
+    const host = getHostElement(this)
+    const app = host.__apps && host.__apps.find(app => app.name === name)
     if (app && !app.element) {
       // 必须放在createSandbox前面
       this.ready(true)
-      app.element = this
-      await app.createSandbox()
+      await app.createSandbox(this)
       // 如果当前app应该被渲染，那么直接渲染它
       app.mounted && await app.mount({ ...app.mounted.params, reconnect: true })
     }
