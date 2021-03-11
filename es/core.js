@@ -162,10 +162,10 @@ function createScope(url, parentScope) {
 }
 
 function createApp(parentScope, options) {
-  const { name, source, type, placeholder, onLoad, onBootstrap, onMount, onUnmount, onDestroy, onMessage, autoBootstrap, autoMount, hoistCssRules, injectCss, injectJs } = options
+  const { name, source, mode, placeholder, onLoad, onBootstrap, onMount, onUnmount, onDestroy, onMessage, autoBootstrap, autoMount, hoistCssRules, injectCss, injectJs } = options
   const app = {
     name,
-    type,
+    mode,
     mounted: null, // 用来标记当前app是否处于被挂载状态，并不表面dom元素一定存在，可能已经被销毁了
     hoistCssRules,
     injectCss,
@@ -212,7 +212,7 @@ function createApp(parentScope, options) {
   }
 
   async function createSandbox(element) {
-    const { type, source } = app
+    const { mode, source } = app
 
     // 将记录app挂载在哪个element上，不用担心释放问题，下面on(destroy)自动释放
     app.element = element
@@ -226,10 +226,10 @@ function createApp(parentScope, options) {
     element.on('destroy', () => onDestroy && onDestroy())
     element.on('destroy', () => { delete app.element })
 
-    if (type === 'iframe') {
+    if (mode === 'iframe') {
       await element.createIframe()
     }
-    else if (type === 'shadowdom') {
+    else if (mode === 'shadowdom') {
       await element.createVM()
     }
     else {
@@ -244,7 +244,7 @@ function createApp(parentScope, options) {
   }
 
   async function mount(params = {}) {
-    const { type, source, element, hoistCssRules, injectCss, injectJs, name } = app
+    const { mode, source, element, hoistCssRules, injectCss, injectJs, name } = app
     app.mounted = { params }
 
     // element可能已经被销毁
@@ -291,7 +291,7 @@ function createApp(parentScope, options) {
       document.head.appendChild(styleEl)
     }
 
-    if (type === 'iframe') {
+    if (mode === 'iframe') {
       const { url } = source
       const win = await element.mount(url, params)
       const doc = win.document
@@ -326,7 +326,7 @@ function createApp(parentScope, options) {
   }
 
   async function update(params) {
-    const { type, source, element, mounted } = app
+    const { mode, source, element, mounted } = app
     if (!mounted) {
       return
     }
@@ -340,7 +340,7 @@ function createApp(parentScope, options) {
 
     await source.ready()
 
-    if (type === 'iframe') {
+    if (mode === 'iframe') {
       const { url } = source
       await element.update(url, params)
     }
