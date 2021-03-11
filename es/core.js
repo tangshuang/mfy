@@ -162,12 +162,14 @@ function createScope(url, parentScope) {
 }
 
 function createApp(parentScope, options) {
-  const { name, source, type, placeholder, onLoad, onBootstrap, onMount, onUnmount, onDestroy, onMessage, autoBootstrap, autoMount, hoistCssRules } = options
+  const { name, source, type, placeholder, onLoad, onBootstrap, onMount, onUnmount, onDestroy, onMessage, autoBootstrap, autoMount, hoistCssRules, injectCss, injectJs } = options
   const app = {
     name,
     type,
     mounted: null, // 用来标记当前app是否处于被挂载状态，并不表面dom元素一定存在，可能已经被销毁了
     hoistCssRules,
+    injectCss,
+    injectJs,
   }
 
   async function bootstrap(isToMount) {
@@ -242,7 +244,7 @@ function createApp(parentScope, options) {
   }
 
   async function mount(params = {}) {
-    const { type, source, element, hoistCssRules, name } = app
+    const { type, source, element, hoistCssRules, injectCss, injectJs, name } = app
     app.mounted = { params }
 
     // element可能已经被销毁
@@ -294,7 +296,7 @@ function createApp(parentScope, options) {
       await element.mount(url, params)
     }
     else {
-      const { styles, scripts, elements } = await parseSourceText(source)
+      const { styles, scripts, elements } = await parseSourceText(source, injectCss, injectJs)
       hoistStyle(styles)
       await element.mount({ styles, scripts, elements }, params)
     }
@@ -416,7 +418,7 @@ export function registerMicroApp(options) {
   return app
 }
 
-async function parseSourceText(source) {
+async function parseSourceText(source, injectCss, injectJs) {
   await source.ready()
 
   // 使用缓存
@@ -433,6 +435,18 @@ async function parseSourceText(source) {
   const parser = new DOMParser()
   const htmlDoc = parser.parseFromString(text, 'text/html')
   const { head, body } = htmlDoc
+
+  if (injectCss) {
+    const style = document.createElement('style')
+    style.textContent = injectCss
+    head.appendChild(style)
+  }
+
+  if (injectJs) {
+    const script = document.createElement('script')
+    script.textContent = injectJs
+    body.appendChild(script)
+  }
 
   const styles = []
   const scripts = []

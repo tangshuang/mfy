@@ -84,6 +84,8 @@ importSource('./apps/some/index.html')
   autoBootstrap: 自动启动该子应用
   autoMount: 自动挂载该子应用，包含了autoBootstrap的效果
   hoistCssRules(rule): 哪些样式要被挂载到当前环境的head中实现全局样式，返回样式的字符串文本cssText
+  injectCss: string, 注入样式，用以覆盖子应用原本的样式（以style的形式放在子应用head区末尾）
+  injectJs: string, 注入JS脚本（以script的形式放在子应用body区末尾）
 }
 ```
 
