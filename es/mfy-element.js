@@ -153,7 +153,7 @@ export class MFY_Element extends HTMLElement {
         const win = iframe.contentWindow
         if (win) {
           this.emit('mount')
-          resolve()
+          resolve(win)
 
           iframe.onload = () => {}
           iframe.onerror = () => {}

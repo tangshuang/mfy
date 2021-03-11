@@ -293,7 +293,30 @@ function createApp(parentScope, options) {
 
     if (type === 'iframe') {
       const { url } = source
-      await element.mount(url, params)
+      const win = await element.mount(url, params)
+      const doc = win.document
+
+      if (injectCss) {
+        const id = 'mfy-app-injectcss'
+        // iframe可能被卸载后再重新挂载回来，存在于内存中
+        if (!doc.querySelector('#' + id)) {
+          const style = doc.createElement('style')
+          style.id = id
+          style.textContent = injectCss
+          doc.head.appendChild(style)
+        }
+      }
+
+      if (injectJs) {
+        const id = 'mfy-app-injectjs'
+        // 同上
+        if (!doc.querySelector('#' + id)) {
+          const script = doc.createElement('script')
+          script.id = id
+          script.textContent = injectJs
+          doc.body.appendChild(script)
+        }
+      }
     }
     else {
       const { styles, scripts, elements } = await parseSourceText(source, injectCss, injectJs)
