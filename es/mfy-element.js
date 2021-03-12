@@ -486,29 +486,41 @@ export class MFY_Element extends HTMLElement {
         style.setAttribute('mfy-app-name', name)
         box.appendChild(style) // 直接加载到当前文档
         // 挂载当前应用样式
+        const createRulesCss = (rules) => {
+          const ruleTexts = rules.map((rule) => {
+            const { selector, content, condition } = rule
+
+            // media query
+            if (condition) {
+              const cssText = createRulesCss(rule.rules)
+              return `@media ${condition} { ${cssText} }`
+            }
+
+            const names = selector.split(',').map(str => str.trim()).map((selector) => {
+              const namespace = `mfy-app[name="${name}"]`
+              if (selector.startsWith('html')) {
+                return selector.replace('html', namespace)
+              }
+              else if (selector.startsWith('body')) {
+                return selector.replace('body', namespace)
+              }
+              else {
+                return namespace + ' ' + selector
+              }
+            })
+            const selectors = names.reduce((items, item) => items.includes(item) ? items : [...items, item], [])
+            const ruleText = selectors.join(', ') + ' { ' + content + ' }'
+            return ruleText
+          })
+
+          const cssText = ruleTexts.join('\n')
+          return cssText
+        }
         styles.forEach((style) => {
           if (style.rules && style.rules.length) {
             const { rules, attributes } = style
-            const ruleTexts = rules.map((rule) => {
-              const { selector, content } = rule
-              const names = selector.split(',').map(str => str.trim()).map((selector) => {
-                const namespace = `mfy-app[name="${name}"]`
-                if (selector.startsWith('html')) {
-                  return selector.replace('html', namespace)
-                }
-                else if (selector.startsWith('body')) {
-                  return selector.replace('body', namespace)
-                }
-                else {
-                  return namespace + ' ' + selector
-                }
-              })
-              const selectors = names.reduce((items, item) => items.includes(item) ? items : [...items, item], [])
-              const ruleText = selectors.join(', ') + ' { ' + content + ' }'
-              return ruleText
-            })
 
-            const cssText = ruleTexts.join('\n')
+            const cssText = createRulesCss(rules)
             const el = document.createElement('style')
 
             setElementAttributes(el, attributes)
