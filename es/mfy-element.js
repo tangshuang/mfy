@@ -630,8 +630,8 @@ export class MFY_Element extends HTMLElement {
         const inIframe = sandbox.contentWindow
         const root = inIframe ? sandbox.contentWindow.document.body : sandbox
         const [target, ...others] = [].concat(viewport)
-        const el = root.querySelectorAll(target)
-        const ignores = Array.from(root.querySelectorAll(others.join(',')))
+        const el = root.querySelector(target)
+        const ignores = others.length ? Array.from(root.querySelectorAll(others.join(','))) : []
 
         if (!el) {
           sync()

@@ -66,6 +66,15 @@
     placeholder: () => `
       <h3>正在加载App1</h3>
     `,
+    // 向子应用注入css
+    injectCss: `
+      button {
+        border: #dedede solid 1px;
+        padding: 10px 15px;
+        background: #fff;
+        cursor: pointer;
+      }
+    `,
   })
 
   const app2 = registerMicroApp({
@@ -80,11 +89,19 @@
     placeholder: `
       <h3>正在加载App2</h3>
     `,
+    // 向子应用注入js
+    injectJs: `
+      setInterval(() => {
+        document.querySelector('#changeUrl').click()
+      }, 1000)
+    `,
   })
 
   const app3 = registerMicroApp({
     name: 'app3',
     source: () => importSource('./micro-apps/app3.html'),
+    // 只显示部分内容，限制了视口大小
+    viewport: '#app3-container',
   })
 
   registerRouter({
