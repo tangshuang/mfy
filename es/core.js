@@ -200,15 +200,34 @@ function createApp(parentScope, options) {
 
     const element = document.querySelector(`mfy-app[name="${name}"]`)
 
-    if (!element) {
-      throw new Error(`文档中不存在 mfy-app[name=${name}] 元素`)
+    const run = async (element) => {
+      await createSandbox(element)
+      await load()
+      if (isToMount) {
+        await mount()
+      }
     }
 
-    await createSandbox(element)
-    await load()
-    if (isToMount) {
-      await mount()
+    // 当启动时，该元素还没有被挂载，此时，需要等待元素挂载之后再启动
+    if (!element) {
+      return new Promise((resolve) => {
+        const wait = () => {
+          requestAnimationFrame(() => {
+            const element = document.querySelector(`mfy-app[name="${name}"]`)
+
+            if (!element) {
+              wait()
+              return
+            }
+
+            run(element).then(resolve)
+          })
+        }
+        wait()
+      })
     }
+
+    await run(element)
   }
 
   async function load() {
