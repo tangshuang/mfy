@@ -73,7 +73,7 @@ importSource('./apps/some/index.html')
 {
   name: string, 对应<mfy-app>的name属性，当前环境中，不允许多次注册同名应用
   source: 资源，只能使用importSource进行导入，直接导入，资源会立即加载，如果接收函数，资源会在bootstrap的时候加载
-  mode: iframe|shadowdom|none, 默认none。子应用的环境隔离类型，默认不做脚本执行环境隔离
+  mode: iframe|shadow|none, 默认none。子应用的环境隔离类型，默认不做脚本执行环境隔离
   placeholder: html字符串，可选，当资源还没有下载完时，可以用这个字符串渲染，字符串内应该包含样式
   onLoad(): 资源加载好时被调用
   onBootstrap(): 子应用启动时被调用

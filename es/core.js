@@ -234,7 +234,7 @@ function createApp(parentScope, options) {
     if (mode === 'iframe') {
       await element.createIframe()
     }
-    else if (mode === 'shadowdom') {
+    else if (mode === 'shadow') {
       await element.createVM()
     }
     else {

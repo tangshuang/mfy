@@ -44,7 +44,7 @@
   const app1 = registerMicroApp({
     name: 'app1',
     source: () => importSource('./micro-apps/app1.html'),
-    type: 'iframe',
+    mode: 'iframe',
     onBootstrap() {
       console.log('app1 bootstrap')
     },
@@ -71,7 +71,7 @@
   const app2 = registerMicroApp({
     name: 'app2',
     source: () => importSource('./micro-apps/app2.html'),
-    type: 'shadowdom',
+    mode: 'shadow',
     hoistCssRules: (rule) => {
       if (rule.selector === 'h1') {
         return rule.cssText
