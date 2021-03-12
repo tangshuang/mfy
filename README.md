@@ -86,6 +86,7 @@ importSource('./apps/some/index.html')
   hoistCssRules(rule): 哪些样式要被挂载到当前环境的head中实现全局样式，返回样式的字符串文本cssText
   injectCss: string, 注入样式，用以覆盖子应用原本的样式（以style的形式放在子应用head区末尾）
   injectJs: string, 注入JS脚本（以script的形式放在子应用body区末尾）
+  viewport: string|stirng[], element selector, 例如 'body > .main-content'，表示在子应用加载完之后，将会以 'body > .main-content' 的长宽作为子应用的显示区域，如果是数组的话，第一个作为可视区域依据，其他的都被保留在视口中
 }
 ```
 

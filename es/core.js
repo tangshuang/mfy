@@ -162,7 +162,11 @@ function createScope(url, parentScope) {
 }
 
 function createApp(parentScope, options) {
-  const { name, source, mode, placeholder, onLoad, onBootstrap, onMount, onUnmount, onDestroy, onMessage, autoBootstrap, autoMount, hoistCssRules, injectCss, injectJs } = options
+  const {
+    name, source, mode, placeholder,
+    onLoad, onBootstrap, onMount, onUnmount, onDestroy, onMessage,
+    autoBootstrap, autoMount,
+    hoistCssRules, injectCss, injectJs, viewport } = options
   const app = {
     name,
     mode,
@@ -170,6 +174,7 @@ function createApp(parentScope, options) {
     hoistCssRules,
     injectCss,
     injectJs,
+    viewport,
   }
 
   async function bootstrap(isToMount) {
@@ -244,7 +249,7 @@ function createApp(parentScope, options) {
   }
 
   async function mount(params = {}) {
-    const { mode, source, element, hoistCssRules, injectCss, injectJs, name } = app
+    const { mode, source, element, hoistCssRules, injectCss, injectJs, viewport, name } = app
     app.mounted = { params }
 
     // element可能已经被销毁
@@ -322,6 +327,11 @@ function createApp(parentScope, options) {
       const { styles, scripts, elements } = await parseSourceText(source, injectCss, injectJs)
       hoistStyle(styles)
       await element.mount({ styles, scripts, elements }, params)
+    }
+
+    // 设置视口
+    if (viewport) {
+      element.setViewPort(viewport)
     }
   }
 

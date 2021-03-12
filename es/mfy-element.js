@@ -1,46 +1,55 @@
 import { getHostElement, resolvePath, getLocation, asyncIterate, debounce } from './utils/utils.js'
 import { createSandboxGlobalObject, runScriptInSandbox, createProxyDocument, createProxyElement } from './proxy-sandbox.js'
 
-const cssText = `
-  :host {
+const cssRules = {
+  ':host': `
     display: block;
-    overflow: hidden;
     flex: 1;
     width: 100%;
     height: 100%;
-  }
-  .mfy-sandbox {
+  `,
+  '.mfy-sandbox': `
     width: 100%;
     height: 100%;
-    border: 0;
     display: none;
-  }
-  .mfy-sandbox.show {
-    display: block;
-  }
-
-  .mfy-sandbox.fade {
+    border: 0;
+    position: relative;
+  `,
+  '.mfy-sandbox.show': `
     display: block;
     opacity: 1;
     transition: opacity .5s;
-  }
-  .mfy-sandbox.fade-in,
-  .mfy-sandbox.fade-out {
+  `,
+  '.mfy-sandbox.fade-in': `
     opacity: 0;
-  }
-
-  .mfy-sandbox.slide {
+  `,
+  '.mfy-sandbox.fade-out': `
+    opacity: 0;
+  `,
+  '.mfy-sandbox.slide': `
     display: block;
     transform: none;
     transition: transform .5s;
-  }
-  .mfy-sandbox.slide-in {
+  `,
+  '.mfy-sandbox.slide-in': `
     transform: translateX(100%);
-  }
-  .mfy-sandbox.slide-out {
+  `,
+  '.mfy-sandbox.slide-out': `
     transform: translateX(-100%);
-  }
-`
+  `,
+}
+const createCssText = (name) => {
+  const rules = Object.keys(cssRules)
+  const text = []
+
+  rules.forEach((rule) => {
+    const content = cssRules[rule]
+    const selector = name ? `${rule}[name="${name}"]` : rule
+    text.push(`${selector} {${content}}`)
+  })
+
+  return text.join('\n')
+}
 
 export class MFY_Element extends HTMLElement {
   constructor() {
@@ -115,11 +124,13 @@ export class MFY_Element extends HTMLElement {
     let _updating = false
     let _mounted = false
 
-    this.sandbox = iframe // 将沙箱挂载在sandbox属性上，方便外部调用
-    style.textContent = cssText
+    style.textContent = createCssText()
     iframe.classList.add('mfy-sandbox')
     iframe.sandbox = 'allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-modals'
     iframe.src = 'about:blank'
+    iframe.frameborder = 0
+
+    this.sandbox = iframe // 将沙箱挂载在sandbox属性上，方便外部调用
 
     const updateIframeSrc = (url, params) => {
       if (params && typeof params === 'object') {
@@ -260,9 +271,10 @@ export class MFY_Element extends HTMLElement {
     let _updating = false
     let _mounted = false
 
-    this.sandbox = vmbox // 将沙箱挂载在sandbox属性上，方便外部调用
-    style.textContent = cssText
+    style.textContent = createCssText()
     vmbox.classList.add('mfy-sandbox')
+
+    this.sandbox = vmbox // 将沙箱挂载在sandbox属性上，方便外部调用
 
     const win = jsvm.window
     const reactive = debounce((event) => {
@@ -443,49 +455,11 @@ export class MFY_Element extends HTMLElement {
     let _mounted = false
 
     this.sandbox = box
+
     box.classList.add('mfy-sandbox')
 
     const name = this.getAttribute('name')
-    const cssText = `
-      mfy-app[name="${name}"] {
-        display: block;
-        overflow: hidden;
-        flex: 1;
-        width: 100%;
-        height: 100%;
-      }
-      mfy-app[name="${name}"] .mfy-sandbox {
-        width: 100%;
-        height: 100%;
-        border: 0;
-        display: none;
-      }
-      mfy-app[name="${name}"] .mfy-sandbox.show {
-        display: block;
-      }
-
-      mfy-app[name="${name}"] .mfy-sandbox.fade {
-        display: block;
-        opacity: 1;
-        transition: opacity .5s;
-      }
-      mfy-app[name="${name}"] .mfy-sandbox.fade-in,
-      mfy-app[name="${name}"] .mfy-sandbox.fade-out {
-        opacity: 0;
-      }
-
-      mfy-app[name="${name}"] .mfy-sandbox.slide {
-        display: block;
-        transform: none;
-        transition: transform .5s;
-      }
-      mfy-app[name="${name}"] .mfy-sandbox.slide-in {
-        transform: translateX(100%);
-      }
-      mfy-app[name="${name}"] .mfy-sandbox.slide-out {
-        transform: translateX(-100%);
-      }
-    `
+    const cssText = createCssText(name)
 
     this.mount = async ({ styles, scripts, elements }, params) => {
       // 置空
@@ -636,5 +610,62 @@ export class MFY_Element extends HTMLElement {
   }
 
   // attributeChangedCallback() {}
+
+  setViewPort(viewport) {
+    const sync = () => {
+      requestAnimationFrame(() => {
+        const sandbox = this.sandbox
+        const inIframe = sandbox.contentWindow
+        const root = inIframe ? sandbox.contentWindow.document.body : sandbox
+        const [target, ...others] = [].concat(viewport)
+        const el = root.querySelectorAll(target)
+        const ignores = Array.from(root.querySelectorAll(others.join(',')))
+
+        if (!el) {
+          sync()
+          return
+        }
+
+        const { width, height } = el.getBoundingClientRect()
+
+        // 所有兄弟节点隐藏
+        let parent = el.parentNode
+        let current = el
+        while (parent) {
+          if (current === this) {
+            break
+          }
+
+          Array.from(parent.children).forEach((child) => {
+            if (child === current) {
+              return
+            }
+            if (ignores.includes(current)) {
+              return
+            }
+            child.style.display = 'none'
+          })
+
+          current = parent
+          parent = parent.parentNode
+        }
+
+        // 去除边距
+        el.style.padding = 0
+        el.style.margin = 0
+
+        // 控制高度宽度
+        el.style.width = width + 'px'
+        el.style.height = height + 'px'
+
+        sandbox.style.width = width + 'px'
+        sandbox.style.height = height + 'px'
+        this.style.width = width + 'px'
+        this.style.height = height + 'px'
+        sync()
+      })
+    }
+    sync()
+  }
 }
 export default MFY_Element
