@@ -659,7 +659,7 @@ async function parseSourceText(source, injectCss, injectJs) {
     }
   }
 
-  const push = async (node) => {
+  const push = async (node, where) => {
     const { outerHTML, attributes, nodeName } = node
     const tag = nodeName.toLowerCase()
     if (tag === 'style') {
@@ -676,6 +676,7 @@ async function parseSourceText(source, injectCss, injectJs) {
         outerHTML: `<base href="${absRoot}" />`,
         attributes: [{ name: 'href', value: absRoot }],
         tag,
+        head: true,
       })
     }
     else if (tag.indexOf('#') !== 0) {
@@ -683,20 +684,21 @@ async function parseSourceText(source, injectCss, injectJs) {
         outerHTML,
         attributes: buildAttributes(attributes),
         tag,
+        [where]: true,
       })
     }
   }
 
-  const eachNode = async (child) => {
+  const eachNode = async (child, where) => {
     if (child.nodeName === '#text' && !child.textContent.trim()) {
       return
     }
-    await push(child)
+    await push(child, where)
   }
 
   await Promise.all([
-    await asyncIterate(Array.from(head.childNodes), eachNode),
-    await asyncIterate(Array.from(body.childNodes), eachNode),
+    await asyncIterate(Array.from(head.childNodes), node => eachNode(node, 'head')),
+    await asyncIterate(Array.from(body.childNodes), node => eachNode(node, 'body')),
   ])
 
   source.styles = styles
