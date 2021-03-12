@@ -44,7 +44,10 @@ const createCssText = (name) => {
 
   rules.forEach((rule) => {
     const content = cssRules[rule]
-    const selector = name ? `${rule}[name="${name}"]` : rule
+    const selector = name ? (
+        rule === ':host' ? `mfy-app[name="${name}"]` : `${rule}[name="${name}"]`
+      )
+      : rule
     text.push(`${selector} {${content}}`)
   })
 
@@ -317,7 +320,7 @@ export class MFY_Element extends HTMLElement {
       // 仅第一次渲染
       if (!this._mounted) {
         const styleEls = styles.map((style) => {
-          if (style.rules && style.rules.some(rule => rule.selector.indexOf('html') > -1 || rule.selector.indexOf('body') > -1)) {
+          if (style.rules && style.rules.some(rule => rule.selector && (rule.selector.indexOf('html') > -1 || rule.selector.indexOf('body') > -1))) {
             const ruleTexts = style.rules.map(rule => rule.cssText.replace('html', '.mfy-sandbox').replace('body', '.mfy-sandbox'))
             const cssText = ruleTexts.join('\n')
             const attrs = style.attributes.map(({ name, value }) => `${name}="${value}"`).join(' ')
@@ -490,29 +493,33 @@ export class MFY_Element extends HTMLElement {
         // 挂载当前应用样式
         const createRulesCss = (rules) => {
           const ruleTexts = rules.map((rule) => {
-            const { selector, content, condition } = rule
+            const { selector, content, condition, cssText } = rule
 
             // media query
             if (condition) {
               const cssText = createRulesCss(rule.rules)
               return `@media ${condition} { ${cssText} }`
             }
-
-            const names = selector.split(',').map(str => str.trim()).map((selector) => {
-              const namespace = `mfy-app[name="${name}"]`
-              if (selector.startsWith('html')) {
-                return selector.replace('html', namespace)
-              }
-              else if (selector.startsWith('body')) {
-                return selector.replace('body', namespace)
-              }
-              else {
-                return namespace + ' ' + selector
-              }
-            })
-            const selectors = names.reduce((items, item) => items.includes(item) ? items : [...items, item], [])
-            const ruleText = selectors.join(', ') + ' { ' + content + ' }'
-            return ruleText
+            else if (selector) {
+              const names = selector.split(',').map(str => str.trim()).map((selector) => {
+                const namespace = `mfy-app[name="${name}"]`
+                if (selector.startsWith('html')) {
+                  return selector.replace('html', namespace)
+                }
+                else if (selector.startsWith('body')) {
+                  return selector.replace('body', namespace)
+                }
+                else {
+                  return namespace + ' ' + selector
+                }
+              })
+              const selectors = names.reduce((items, item) => items.includes(item) ? items : [...items, item], [])
+              const ruleText = selectors.join(', ') + ' { ' + content + ' }'
+              return ruleText
+            }
+            else {
+              return cssText
+            }
           })
 
           const cssText = ruleTexts.join('\n')

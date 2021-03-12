@@ -20,7 +20,7 @@ function createSource(url, options = {}) {
     text: '',
   }
 
-  const { sourceSwitchMapping } = options
+  const { sourceSwitchMapping, absRoot } = options
 
   const fetchText = () => {
     if (!isInternalLink(url) && (!sourceSwitchMapping || !sourceSwitchMapping[url])) {
@@ -66,6 +66,7 @@ function createSource(url, options = {}) {
 
   const deferer = fetchText()
   source.ready = fn => fn ? deferer.then(fn) : deferer
+  source.absRoot = absRoot
 
   return source
 }
@@ -200,7 +201,7 @@ function createApp(parentScope, options) {
 
     const element = document.querySelector(`mfy-app[name="${name}"]`)
 
-    const run = async (element) => {
+    const run = async (element, isToMount) => {
       await createSandbox(element)
       await load()
       if (isToMount) {
@@ -220,14 +221,14 @@ function createApp(parentScope, options) {
               return
             }
 
-            run(element).then(resolve)
+            run(element, !!app.mounted).then(resolve)
           })
         }
         wait()
       })
     }
 
-    await run(element)
+    await run(element, isToMount)
   }
 
   async function load() {
@@ -443,7 +444,7 @@ export function connectScope(root) {
 export function importSource(url, options = {}) {
   const scope = connectScope()
   const { url: scopeUrl } = scope
-  const { baseUrl = scopeUrl, sourceSwitchMapping: mapping } = options
+  const { baseUrl = scopeUrl, sourceSwitchMapping, absRoot } = options
   const realUrl = resolvePath(baseUrl, url)
 
   const win = getTopWindow()
@@ -454,8 +455,11 @@ export function importSource(url, options = {}) {
   }
 
   const sourceOptions = {}
-  if (mapping) {
-    sourceOptions.sourceSwitchMapping = mapping
+  if (sourceSwitchMapping) {
+    sourceOptions.sourceSwitchMapping = sourceSwitchMapping
+  }
+  if (absRoot) {
+    sourceOptions.absRoot = absRoot
   }
 
   const source = createSource(realUrl, sourceOptions)
@@ -482,7 +486,7 @@ async function parseSourceText(source, injectCss, injectJs) {
     }
   }
 
-  const { text, url: sourceUrl, sourceSwitchMapping } = source
+  const { text, url: sourceUrl, sourceSwitchMapping, absRoot } = source
 
   const parser = new DOMParser()
   const htmlDoc = parser.parseFromString(text, 'text/html')
@@ -505,7 +509,7 @@ async function parseSourceText(source, injectCss, injectJs) {
   const elements = []
 
   const buildAttributes = (attributes) => {
-    return Array.from(attributes).map(({ name, value }) => ({ name, value }))
+    return attributes ? Array.from(attributes).map(({ name, value }) => ({ name, value })) : []
   }
 
   // 用于移除样式中的@import
@@ -524,7 +528,7 @@ async function parseSourceText(source, injectCss, injectJs) {
         return match
       }
       else {
-        return resolvePath(baseUrl, uri)
+        return resolvePath(baseUrl, uri, absRoot)
       }
     })
     return text
@@ -551,7 +555,7 @@ async function parseSourceText(source, injectCss, injectJs) {
           res.content = content
         }
         else if (type === 3) {
-          res.import = resolvePath(url, rule.href)
+          res.import = resolvePath(url, rule.href, absRoot)
         }
         else if (type === 4) {
           const { rules } = await affectContent(rule.cssRules)
@@ -605,19 +609,20 @@ async function parseSourceText(source, injectCss, injectJs) {
   }
   const pushSheetLink = async (node) => {
     const { outerHTML, attributes } = node
-    const link = resolvePath(sourceUrl, node.getAttribute('href'))
-
+    const link = resolvePath(sourceUrl, node.getAttribute('href'), absRoot)
     const source = importSource(link, { baseUrl: sourceUrl, sourceSwitchMapping })
     try {
       await source.ready()
       const text = source.text
       const style = document.createElement('style')
       style.textContent = text
+      document.body.appendChild(style)
       await pushStyleNode(style, link)
+      document.body.removeChild(style)
     }
     catch (e) {
       const res = {
-        outerHTML,
+        outerHTML: outerHTML.replace(/href=".*?"/, `href="${link}"`),
         attributes: buildAttributes(attributes),
         link,
       }
@@ -634,7 +639,7 @@ async function parseSourceText(source, injectCss, injectJs) {
 
     if (node.src) {
       try {
-        const src = resolvePath(sourceUrl, node.src)
+        const src = resolvePath(sourceUrl, node.src, absRoot)
         const source = importSource(src, { baseUrl: sourceUrl, sourceSwitchMapping })
         res.src = src
 
@@ -666,7 +671,14 @@ async function parseSourceText(source, injectCss, injectJs) {
     else if (tag === 'script') {
       await pushScriptNode(node)
     }
-    else {
+    else if (tag === 'base' && absRoot) {
+      elements.push({
+        outerHTML: `<base href="${absRoot}" />`,
+        attributes: [{ name: 'href', value: absRoot }],
+        tag,
+      })
+    }
+    else if (tag.indexOf('#') !== 0) {
       elements.push({
         outerHTML,
         attributes: buildAttributes(attributes),

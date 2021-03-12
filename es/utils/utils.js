@@ -14,7 +14,7 @@ export function isAbsolutePath(url) {
   return url[0] === '/' && url[1] !== '/'
 }
 
-export function resolvePath(baseUrl, uri) {
+export function resolvePath(baseUrl, uri, absRoot = '') {
   if (!uri) {
     return baseUrl
   }
@@ -23,7 +23,19 @@ export function resolvePath(baseUrl, uri) {
     return uri
   }
 
-  if (uri.indexOf('/') === 0 || /^[a-z]+:\/\//.test(uri)) {
+  if (uri.indexOf('/') === 0) {
+    return absRoot + uri
+  }
+
+  if (/^[a-z]+:\/\//.test(uri)) {
+    // 使用绝对路径
+    if (uri === window.location.origin) {
+      return absRoot ? absRoot : '/'
+    }
+    if (uri.indexOf(window.location.origin + '/') === 0) {
+      return absRoot + uri.replace(window.location.origin, '')
+    }
+
     return uri
   }
 
