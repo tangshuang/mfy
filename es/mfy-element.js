@@ -122,7 +122,7 @@ export class MFY_Element extends HTMLElement {
 
     let _transition = ''
     let _updating = false
-    let _mounted = false
+    this._mounted = false
 
     style.textContent = createCssText()
     iframe.classList.add('mfy-sandbox')
@@ -188,8 +188,8 @@ export class MFY_Element extends HTMLElement {
 
       updateIframeSrc(url, params)
 
-      if (!_mounted) {
-        _mounted = true
+      if (!this._mounted) {
+        this._mounted = true
       }
 
       shadowRoot.appendChild(style)
@@ -217,6 +217,7 @@ export class MFY_Element extends HTMLElement {
       const unmount = () => {
         shadowRoot.removeChild(iframe)
         shadowRoot.removeChild(style)
+        this._mounted = false
         this.emit('unmount')
         resolve()
       }
@@ -269,7 +270,7 @@ export class MFY_Element extends HTMLElement {
 
     let _transition = ''
     let _updating = false
-    let _mounted = false
+    this._mounted = false
 
     style.textContent = createCssText()
     vmbox.classList.add('mfy-sandbox')
@@ -314,7 +315,7 @@ export class MFY_Element extends HTMLElement {
       }
 
       // 仅第一次渲染
-      if (!_mounted) {
+      if (!this._mounted) {
         const styleEls = styles.map((style) => {
           if (style.rules && style.rules.some(rule => rule.selector.indexOf('html') > -1 || rule.selector.indexOf('body') > -1)) {
             const ruleTexts = style.rules.map(rule => rule.cssText.replace('html', '.mfy-sandbox').replace('body', '.mfy-sandbox'))
@@ -351,7 +352,7 @@ export class MFY_Element extends HTMLElement {
         vmbox.classList.add('show')
       }
 
-      if (!_mounted) {
+      if (!this._mounted) {
         const setElementAttributes = (el, attributes, excludes = []) => {
           attributes.filter(item => !excludes.includes(item.name)).forEach(({ name, value }) => el.setAttribute(name, value))
         }
@@ -400,7 +401,7 @@ export class MFY_Element extends HTMLElement {
           }
         })
 
-        _mounted = true
+        this._mounted = true
       }
 
       updateInnerUrl(params)
@@ -410,6 +411,7 @@ export class MFY_Element extends HTMLElement {
       const unmount = () => {
         shadowRoot.removeChild(vmbox)
         shadowRoot.removeChild(style)
+        this._mounted = false
         this.emit('unmount')
         resolve()
       }
@@ -452,7 +454,7 @@ export class MFY_Element extends HTMLElement {
 
     let _transition = ''
     let _updating = false
-    let _mounted = false
+    this._mounted = false
 
     this.sandbox = box
 
@@ -472,7 +474,7 @@ export class MFY_Element extends HTMLElement {
         attributes.filter(item => !excludes.includes(item.name)).forEach(({ name, value }) => el.setAttribute(name, value))
       }
 
-      if (!_mounted) {
+      if (!this._mounted) {
         const getElementByHtml = (html) => {
           const el = document.createElement('div')
           el.innerHTML = html
@@ -564,7 +566,7 @@ export class MFY_Element extends HTMLElement {
 
       // 如果已经挂载过脚本了，就不在挂载了，脚本具有运行时状态特征，不能重复挂载
       // 脚本要box挂载到root之后执行，否则DOM可能不存在
-      if (!_mounted) {
+      if (!this._mounted) {
         await asyncIterate(scripts, async (script) => {
           const { attributes, textContent, src } = script
           const el = document.createElement('script')
@@ -588,7 +590,7 @@ export class MFY_Element extends HTMLElement {
           document.body.appendChild(el)
           await ready()
         })
-        _mounted = true
+        this._mounted = true
       }
 
       this.emit('mount')
@@ -596,6 +598,7 @@ export class MFY_Element extends HTMLElement {
     this.unmount = () => new Promise((resolve) => {
       const unmount = () => {
         root.removeChild(box)
+        this._mounted = false
         this.emit('unmount')
         resolve()
       }
@@ -626,6 +629,11 @@ export class MFY_Element extends HTMLElement {
   setViewPort(viewport) {
     const sync = () => {
       requestAnimationFrame(() => {
+        if (!this._mounted) {
+          sync()
+          return
+        }
+
         const sandbox = this.sandbox
         const inIframe = sandbox.contentWindow
         const root = inIframe ? sandbox.contentWindow.document.body : sandbox
@@ -638,7 +646,8 @@ export class MFY_Element extends HTMLElement {
           return
         }
 
-        const { width, height } = el.getBoundingClientRect()
+        const rect = el.getBoundingClientRect()
+        const { width, height } = rect
 
         // 所有兄弟节点隐藏
         let parent = el.parentNode
@@ -666,14 +675,12 @@ export class MFY_Element extends HTMLElement {
         el.style.padding = 0
         el.style.margin = 0
 
-        // 控制高度宽度
-        el.style.width = width + 'px'
-        el.style.height = height + 'px'
+        // 限制整个视口大小
+        sandbox.style.maxWidth = width + 'px'
+        sandbox.style.maxHeight = height + 'px'
+        this.style.maxWidth = width + 'px'
+        this.style.maxHeight = height + 'px'
 
-        sandbox.style.width = width + 'px'
-        sandbox.style.height = height + 'px'
-        this.style.width = width + 'px'
-        this.style.height = height + 'px'
         sync()
       })
     }
