@@ -20,7 +20,7 @@ function createSource(url, options = {}) {
     text: '',
   }
 
-  const { sourceSwitchMapping, absRoot } = options
+  const { sourceSwitchMapping, ...otherOptions } = options
 
   const fetchText = () => {
     if (!isInternalLink(url) && (!sourceSwitchMapping || !sourceSwitchMapping[url])) {
@@ -66,7 +66,7 @@ function createSource(url, options = {}) {
 
   const deferer = fetchText()
   source.ready = fn => fn ? deferer.then(fn) : deferer
-  source.absRoot = absRoot
+  Object.assign(source, otherOptions)
 
   return source
 }
@@ -167,7 +167,8 @@ function createApp(parentScope, options) {
     name, source, mode, placeholder,
     onLoad, onBootstrap, onMount, onUnmount, onDestroy, onMessage,
     autoBootstrap, autoMount,
-    hoistCssRules, injectCss, injectJs, viewport } = options
+    hoistCssRules, injectCss, injectJs, viewport,
+  } = options
   const app = {
     name,
     mode,
@@ -444,7 +445,7 @@ export function connectScope(root) {
 export function importSource(url, options = {}) {
   const scope = connectScope()
   const { url: scopeUrl } = scope
-  const { baseUrl = scopeUrl, sourceSwitchMapping, absRoot } = options
+  const { baseUrl = scopeUrl, ...otherOptions } = options
   const realUrl = resolvePath(baseUrl, url)
 
   const win = getTopWindow()
@@ -454,15 +455,7 @@ export function importSource(url, options = {}) {
     return cache
   }
 
-  const sourceOptions = {}
-  if (sourceSwitchMapping) {
-    sourceOptions.sourceSwitchMapping = sourceSwitchMapping
-  }
-  if (absRoot) {
-    sourceOptions.absRoot = absRoot
-  }
-
-  const source = createSource(realUrl, sourceOptions)
+  const source = createSource(realUrl, otherOptions)
   caches.push(source)
   return source
 }

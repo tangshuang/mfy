@@ -9,30 +9,30 @@ export function createProxyElement(element, fakeElement = {}) {
   return proxy
 }
 
-export function createProxyDocument(doc = document, basic = {}) {
-  const body = createProxyElement(doc.body)
-  const head = createProxyElement(doc.head)
+export function createProxyDocument(doc = {}) {
+  const body = createProxyElement(doc.body || document.body)
+  const head = createProxyElement(doc.head || document.head)
   const fakeDocument = {
     head,
     body,
-    ...basic,
   }
-  return createProxyElement(doc, fakeDocument)
+  return createProxyElement(document, fakeDocument)
 }
 
-export async function createProxyWindow(win = window, basic = {}) {
-  const doc = createProxyDocument(document)
+export async function createProxyWindow(win = window, doc = createProxyDocument()) {
+  const fakeId = Number.parseInt(Math.random() * 1000, 10)
 
   // 使用一个iframe内部的window作为基座，可以隔绝history和location变化带来的影响
   const fake = {}
-  const iframe = doc.createElement('iframe')
+  const iframe = document.createElement('iframe')
   // iframe.src = 'about:blank'
   iframe.srcdoc = ' '
   iframe.style.position = 'fixed'
   iframe.style.top = '-10000px'
+  iframe.id = 'mfy-window-' + fakeId
 
   const buildFakeWindow = async () => {
-    doc.body.appendChild(iframe)
+    document.body.appendChild(iframe)
     await new Promise((resolve, reject) => {
       const onload = () => {
         fake.window = iframe.contentWindow
@@ -59,7 +59,7 @@ export async function createProxyWindow(win = window, basic = {}) {
     iframe.src = 'about:blank'
     iframe.contentWindow.document.write('')
     iframe.contentWindow.document.clear()
-    doc.body.removeChild(iframe)
+    document.body.removeChild(iframe)
   }
 
   const rebuildFakeWindow = async () => {
@@ -101,30 +101,36 @@ export async function createProxyWindow(win = window, basic = {}) {
   })
 
   return createProxyElement(fakeWindow, {
+    fakeId,
     document: doc,
-    ...basic,
     rebuildFakeWindow,
     destroyFakeWindow,
   })
 }
 
-export async function createSandboxGlobalObject(fakeGlobalObjects = {}) {
-  const fakeDocument = fakeGlobalObjects.document || createProxyDocument(document)
-  const fakeWindow = fakeGlobalObjects.window || await createProxyWindow(window, { document: fakeDocument })
-  const { history, location } = fakeWindow
-  return { window: fakeWindow, document: fakeDocument, history, location }
+export async function createSandboxGlobalVars(fakeGlobalVars = {}) {
+  const { document: doc = document, window: win = window, body, head, history: his, location: loc } = fakeGlobalVars
+  const fakeDocument = createProxyDocument(doc || document, { body, head })
+  const fakeWindow = await createProxyWindow(win || window, fakeDocument)
+  const history = his || fakeWindow.history
+  const location = loc || fakeWindow.location
+  return { $$type: 'sandbox', window: fakeWindow, document: fakeDocument, history, location }
 }
 
-export async function runScriptInSandbox(scriptCode, sandbox, injectGlobalVars = {}) {
-  const { window, document, location, history } = sandbox || await createSandboxGlobalObject()
-  const varNames = Object.keys(injectGlobalVars)
+export async function runScriptInSandbox(scriptCode, sandboxGlobalVars = {}, injectGlobalVars = {}) {
+  const { window, document, location, history } = sandboxGlobalVars.$$type === 'sandbox' ? sandboxGlobalVars : await createSandboxGlobalVars(sandboxGlobalVars)
 
+  const names = Object.keys(injectGlobalVars)
+  const hasVars = names.length
+  const values = Object.values(injectGlobalVars)
+
+  // 在内部可能直接使用window上的全局变量，因此要放在with内部运行
   const resolver = new Function(`
-    return function(window, document, location, history${varNames.length ? ', ' + varNames.join(', ') : ''}) {
-      ${scriptCode}
+    return function(window,document,location,history${hasVars ? ',' + names.join(',') : ''}) {
+      with (window) {
+        ${scriptCode}
+      }
     }
   `)
-
-  const varList = varNames.map(name => injectGlobalVars[name])
-  return resolver()(window, document, location, history, ...varList)
+  return resolver()(window, document, location, history, ...values)
 }

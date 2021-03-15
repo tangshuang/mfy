@@ -1,5 +1,5 @@
 import { getHostElement, resolvePath, getLocation, asyncIterate, debounce } from './utils/utils.js'
-import { createSandboxGlobalObject, runScriptInSandbox, createProxyDocument, createProxyElement } from './proxy-sandbox.js'
+import { createSandboxGlobalVars, runScriptInSandbox } from './proxy-sandbox.js'
 
 const cssRules = {
   ':host': `
@@ -263,13 +263,11 @@ export class MFY_Element extends HTMLElement {
     const style = document.createElement('style')
     const vmbox = document.createElement('div')
 
-    const fakeEl = createProxyElement(vmbox, {
+    const jsvm = await createSandboxGlobalVars({
+      document: vmbox,
       head: vmbox,
       body: vmbox,
     })
-    const fakeDoc = createProxyElement(document, fakeEl)
-    const vdoc = createProxyDocument(fakeDoc)
-    const jsvm = await createSandboxGlobalObject({ document: vdoc })
 
     let _transition = ''
     let _updating = false
@@ -281,6 +279,8 @@ export class MFY_Element extends HTMLElement {
     this.sandbox = vmbox // 将沙箱挂载在sandbox属性上，方便外部调用
 
     const win = jsvm.window
+    win.__MFY_SCOPE__ = app.scope // 当前custom element内部全部都是app的scope
+
     const reactive = debounce((event) => {
       if (_updating) {
         return
@@ -298,13 +298,13 @@ export class MFY_Element extends HTMLElement {
     const updateInnerUrl = (params) => {
       if (params && typeof params === 'object') {
         const { uri, replace } = params
-        const href = jsvm.window.location.href
+        const href = win.location.href
         const nextUrl = resolvePath(href, uri)
         if (href !== nextUrl && replace) {
-          jsvm.window.history.replaceState(null, null, nextUrl)
+          win.history.replaceState(null, null, nextUrl)
         }
         else if (href !== nextUrl) {
-          jsvm.window.history.pushState(null, null, nextUrl)
+          win.history.pushState(null, null, nextUrl)
         }
       }
     }
@@ -397,9 +397,17 @@ export class MFY_Element extends HTMLElement {
           }
           else {
             setElementAttributes(el, attributes, src ? ['src'] : [])
+
+            // el.setAttribute('type', 'mfy')
+            // el.textContent = textContent
+            if (src) {
+              el.setAttribute('data-script-origin-src', src)
+            }
+
             vmbox.appendChild(el)
+
             jsvm.document.currentScript = el
-            await runScriptInSandbox(textContent, jsvm, { __MFY_SCOPE__: app.scope })
+            await runScriptInSandbox(textContent, jsvm)
             jsvm.document.currentScript = null
           }
         })
