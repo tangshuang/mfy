@@ -63,7 +63,7 @@ export function registerRouter(options) {
           const uri = reactive(data)
           if (uri) {
             const nextUrl = resolvePath(url, uri)
-            window.history.pushState(null, null, nextUrl)
+            window.history.replaceState(null, null, nextUrl)
           }
         }
       })
