@@ -16,7 +16,7 @@ export function createProxyDocument(doc = {}) {
     head,
     body,
   }
-  return createProxyElement(document, fakeDocument)
+  return createProxyElement(doc, fakeDocument)
 }
 
 export async function createProxyWindow(win = window, doc = createProxyDocument()) {
