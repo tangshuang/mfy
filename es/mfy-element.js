@@ -3,41 +3,14 @@ import { createSandboxGlobalVars, runScriptInSandbox } from './proxy-sandbox.js'
 import { importSource, registerMicroApp } from './core.js'
 
 const cssRules = {
-  ':host': `
-    display: block;
-    flex: 1;
-    width: 100%;
-    height: 100%;
-  `,
-  '.mfy-sandbox': `
-    width: 100%;
-    height: 100%;
-    display: none;
-    border: 0;
-    position: relative;
-  `,
-  '.mfy-sandbox.show': `
-    display: block;
-    opacity: 1;
-    transition: opacity .5s;
-  `,
-  '.mfy-sandbox.fade-in': `
-    opacity: 0;
-  `,
-  '.mfy-sandbox.fade-out': `
-    opacity: 0;
-  `,
-  '.mfy-sandbox.slide': `
-    display: block;
-    transform: none;
-    transition: transform .5s;
-  `,
-  '.mfy-sandbox.slide-in': `
-    transform: translateX(100%);
-  `,
-  '.mfy-sandbox.slide-out': `
-    transform: translateX(-100%);
-  `,
+  ':host': 'display: block;flex: 1;width: 100%;height: 100%;',
+  '.mfy-sandbox': 'width: 100%;height: 100%;display: none;border: 0;position: relative;',
+  '.mfy-sandbox.show': 'display: block;opacity: 1;transition: opacity .5s;',
+  '.mfy-sandbox.fade-in': 'opacity: 0;',
+  '.mfy-sandbox.fade-out': 'opacity: 0;',
+  '.mfy-sandbox.slide': 'display: block;transform: none;transition: transform .5s;',
+  '.mfy-sandbox.slide-in': 'transform: translateX(100%);',
+  '.mfy-sandbox.slide-out': 'transform: translateX(-100%);',
 }
 const createCssText = (name) => {
   const rules = Object.keys(cssRules)
@@ -398,7 +371,8 @@ export class MFY_Element extends HTMLElement {
           }
           // 同域名下的脚本，文件会被拉出脚本内容
           else {
-            const init = () => {
+            // 普通的javascript直接在沙箱中运行
+            if (type === 'text/javascript' || type === 'module') {
               setElementAttributes(el, attributes, src ? ['src'] : [])
 
               // el.setAttribute('type', 'mfy')
@@ -408,30 +382,9 @@ export class MFY_Element extends HTMLElement {
               }
 
               vmbox.appendChild(el)
-            }
 
-            // 普通的javascript直接在沙箱中运行
-            if (type === 'text/javascript') {
-              init()
               jsvm.document.currentScript = el
               await runScriptInSandbox(textContent, jsvm)
-              jsvm.document.currentScript = null
-            }
-            // 模块化的转化为异步函数后在沙箱中执行
-            else if (type === 'module') {
-              init()
-              jsvm.document.currentScript = el
-              const moduleScript = textContent.replace(/import (.*?) from (.*?)\n/g, function(_, vars, src) {
-                const realSrc = src.substring(1, src.length - 1);
-                const url = resolvePath(baseUrl, realSrc, absRoot)
-                return `const ${vars} = await import('${url}');\n`
-              })
-              const scriptContent = `
-                (async function() {
-                  ${moduleScript}
-                })();
-              `
-              await runScriptInSandbox(scriptContent, jsvm)
               jsvm.document.currentScript = null
             }
             // 其他的直接放进去即可，例如type="template"

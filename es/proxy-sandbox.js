@@ -109,7 +109,6 @@ export async function createProxyWindow(win = window, doc = createProxyDocument(
   })
 
   return createProxyElement(fakeWindow, {
-    top: win.top,
     fakeId,
     document: doc,
     rebuildFakeWindow,
@@ -149,12 +148,12 @@ export async function runScriptInSandbox(scriptCode, sandboxGlobalVars = {}, inj
   }
 
   // 在内部可能直接使用window上的全局变量，因此要放在with内部运行
-  const resolver = new Function(`
-    return function(window,document,location,history${hasVars ? ',' + names.join(',') : ''}) {
-      with (window) {
-        ${scriptCode}
-      }
-    }
-  `)
+  const resolver = new Function([
+    `return function(window,document,location,history${hasVars ? ',' + names.join(',') : ''}) {`,
+      'with (window) {',
+        scriptCode,
+      '}',
+    '}',
+  ].join(''))
   return resolver()(window, document, location, history, ...values)
 }

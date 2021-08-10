@@ -10,7 +10,7 @@
     "webpack-cli": "^4.1.0"
   },
   "scripts": {
-    "dev": "node dev-server",
+    "dev": "node .example/dev-server",
     "build": "webpack"
   },
   "repository": {

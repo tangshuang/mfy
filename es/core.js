@@ -103,7 +103,6 @@ function createScope(url, parentScope) {
 
   // 向父应用发消息
   const emit = (data) => {
-    console.log(scope.parentScope)
     trigger('message:toParent', data)
   }
   // 接收到子应用发来的消息
@@ -414,15 +413,19 @@ function createApp(parentScope, options) {
   return app
 }
 
-export function connectScope(root) {
-  const win = getTopWindow()
-  const rootScope = win.__MFY_ROOT_SCOPE__
-  if (root) {
+export function connectScope(win) {
+  const top = getTopWindow()
+  const rootScope = top.__MFY_ROOT_SCOPE__
+  if (win === true) {
     return rootScope
   }
 
-  if (win.__MFY_SCOPE__) {
-    return win.__MFY_SCOPE__
+  if (window.__MFY_SCOPE__) {
+    return window.__MFY_SCOPE__
+  }
+
+  if (top.__MFY_SCOPE__) {
+    top.__MFY_SCOPE__
   }
 
   // 直接js中运行的脚本
@@ -431,12 +434,18 @@ export function connectScope(root) {
   }
 
   // 在iframe中启用的子应用
-  if (window !== win && window.frameElement) {
+  if (window !== top && window.frameElement) {
     const iframe = window.frameElement
     const host = getHostElement(iframe)
     if (host && host.__app) {
       return host.__app.scope
     }
+  }
+
+  // 传入了一个window对象（可能是代理对象）
+  // 这个传入的window只是一个兜底的参考值，优先级还是低于上面的逻辑
+  if (win && win.__MFY_SCOPE__) {
+    return win.__MFY_SCOPE__
   }
 
   // 默认顶级scope
@@ -449,8 +458,8 @@ export function importSource(url, options = {}) {
   const { baseUrl = scopeUrl, ...otherOptions } = options
   const realUrl = resolvePath(baseUrl, url)
 
-  const win = getTopWindow()
-  const caches = win.__MFY_SOURCES__ = win.__MFY_SOURCES__ || []
+  const top = getTopWindow()
+  const caches = top.__MFY_SOURCES__ = top.__MFY_SOURCES__ || []
   const cache = caches.find(item => item.url === realUrl)
   if (cache) {
     return cache
@@ -652,6 +661,18 @@ async function parseSourceText(source, injectCss, injectJs) {
     else {
       res.textContent = textContent
       scripts.push(res)
+    }
+
+    // 打包整个模块
+    if (type === 'module') {
+      res.originTextContent = res.textContent
+      const moduleScript = res.originTextContent.replace(/import (.*?) from (.*?)[\n|;]/, function(_, vars, src) {
+        const realSrc = src.substring(1, src.length - 1)
+        const url = resolvePath(sourceUrl, realSrc, absRoot)
+        return `const ${vars} = await import('${url}');\n`
+      })
+      const scriptContent = `(async function() {${moduleScript}})();`
+      res.textContent = scriptContent
     }
   }
 

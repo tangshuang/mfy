@@ -126,12 +126,12 @@ app.unmount()
 
 另外，`<mfy-app>`在文档中有可能会因为其他程序的操作，比如vue或react的更新操作，会从文档中被移除，一个`<mfy-app>`标签被移除之后，并不代表这个app被销毁了，这个app仍然存在于内存中，当对应的`<mfy-app>`重新回到文档中时，它会自动重建环境，并根据销毁前的状态决定是否挂载app。
 
-### connectScope(willUseRoot?)
+### connectScope(window)
 
 麦饭中，通过scope完成父子应用的通信。一个子应用一定运行在一个由麦饭创建的环境中，这个环境就是scope，一个scope内，可能运行着多个子应用。每一个子应用又包含了一个自己的内部环境scope，在这个scope中，可能又会有新的子应用挂载进来，这样，app+scope就形成了一个树状结构。scope的主要功能，是为父子应用提供通信。
 
 ```js
-const scope = connectScope()
+const scope = connectScope(window)
 
 scope.emit({ type: 'event', message: 'ok' }) // 向父应用发送消息
 scrope.listen((data) => { // 接收到来自父应用发送的消息
@@ -145,6 +145,8 @@ scope.send(name, data) // 向单个子应用发送消息
 scope.dispatch({ type: 'event', message: 'gogo' }) // 向所有子应用广播消息（不包含孙应用）
 scope.broadcast({ type: 'xx', message: 'oo' }) // 向整个应用树广播消息，自顶向下进行广播
 ```
+
+参数`window`虽然是可选的，但是，我们应该尽可能都传入，因为在沙箱中，window所代表的意思并不完全相同，如果不传，麦饭会自己经过推理得到一个scope，但是这个scope有可能并不正确，特别是在使用type="module"的代码块中。如果你直接传入true代表读取rootScope。
 
 麦饭并不提供全局状态共享的能力，因为应用之间不应该直接共享状态，共享状态导致状态的不可预测性，不利于子应用开发团队专注完成子应用的功能开发。但是，父子通信的能力，实际上提供了传递状态的能力，在必要的时候，可以通过通信机制传递状态。
 
@@ -176,6 +178,9 @@ scope.broadcast({ type: 'xx', message: 'oo' }) // 向整个应用树广播消息
 
 - 麦饭不支持跨域拉取资源，因此，请将你的所有应用部署在主应用域名下。
 - 不管是父级应用，还是子应用，麦饭的所有接口函数，必须在脚本顶层执行，不能异步执行上面的任何一个函数（app.bootstrap等对象方法可以异步执行）
+- _不支持子应用通过`<script type="module">`执行脚本，直接在浏览器中运行的ES脚本目前还不支持创建环境，所以不支持_
+
+对于 `<scirpt type="module">` 的代码块，麦饭会把它转为常规的代码块，并将原本的 import from 用 import() 代替。并且要求所有模块依赖中没有副作用，也就是不会在模块中修改window等全局变量，而是只导出接口。
 
 ## License
 
