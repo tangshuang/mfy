@@ -1,6 +1,6 @@
 {
   "name": "mfy",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "简易的无侵入式微前端框架",
   "main": "index.js",
   "dependencies": {},
