@@ -4,7 +4,7 @@ import {
   getHostElement,
   isInternalLink,
   asyncIterate,
-} from './utils/utils.js'
+} from './utils.js'
 
 const _setScopeToTopWindow = (scope) => {
   const win = getTopWindow()
@@ -103,6 +103,7 @@ function createScope(url, parentScope) {
 
   // 向父应用发消息
   const emit = (data) => {
+    console.log(scope.parentScope)
     trigger('message:toParent', data)
   }
   // 接收到子应用发来的消息
@@ -628,6 +629,8 @@ async function parseSourceText(source, injectCss, injectJs) {
       outerHTML,
       attributes: buildAttributes(attributes),
       type: type || 'text/javascript',
+      absRoot,
+      baseUrl: sourceUrl,
     }
 
     if (node.src) {

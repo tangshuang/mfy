@@ -1,4 +1,4 @@
-import { getLocation, resolvePath, debounce } from './utils/utils.js'
+import { getLocation, resolvePath, debounce } from './utils.js'
 
 export function registerRouter(options) {
   const { routes, onChange, onEnter, onLeave, onUpdate, transition, autoBootstrap } = options

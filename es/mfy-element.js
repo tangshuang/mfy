@@ -1,5 +1,6 @@
-import { getHostElement, resolvePath, getLocation, asyncIterate, debounce } from './utils/utils.js'
+import { getHostElement, resolvePath, getLocation, asyncIterate, debounce } from './utils.js'
 import { createSandboxGlobalVars, runScriptInSandbox } from './proxy-sandbox.js'
+import { importSource, registerMicroApp } from './core.js'
 
 const cssRules = {
   ':host': `
@@ -59,6 +60,8 @@ export class MFY_Element extends HTMLElement {
     super()
 
     this._listeners = []
+    this._ready = null
+    this._insideApp = null
     this.ready(true)
   }
 
@@ -104,6 +107,18 @@ export class MFY_Element extends HTMLElement {
       await app.createSandbox(this)
       // 如果当前app应该被渲染，那么直接渲染它
       app.mounted && await app.mount({ ...app.mounted.params, reconnect: true })
+    }
+
+    // 如果传入了src，那么直接加载应用，而不需要外部来注册
+    const src = this.getAttribute('src')
+    if (src && !this._insideApp) {
+      const mode = this.getAttribute('mode')
+      this._insideApp = registerMicroApp({
+        name,
+        mode,
+        source: importSource(src),
+        autoMount: true,
+      })
     }
   }
 
@@ -366,50 +381,67 @@ export class MFY_Element extends HTMLElement {
           vmbox.appendChild(el)
         })
         await asyncIterate(scripts, async (script) => {
-          const { type, attributes, textContent, src } = script
+          const { type, attributes, textContent, src, baseUrl, absRoot } = script
           const el = document.createElement('script')
           const ready = () => new Promise((resolve, reject) => {
             el.onload = resolve
             el.onerror = reject
           })
 
-          // 仅支持普通javascript在沙箱中运行，不支持其他任何形式在沙箱中运行，所以全部原样输出
-          const isScript = type === 'text/javascript'
-
           // 将script标签进行标记
           el.__app = app
 
-          if (!isScript) {
-            setElementAttributes(el, attributes, ['src'])
-            if (!src) {
-              el.textContent = textContent
-              vmbox.appendChild(el)
-            }
-            // src经过相对路径处理，不能使用原始src
-            else {
-              await mountScript(el, src)
-            }
-            await ready()
-          }
-          else if (src && !textContent) {
+          // 非同域名的外链脚本
+          if (src && !textContent) {
             setElementAttributes(el, attributes, ['src'])
             await mountScript(el, src)
           }
+          // 同域名下的脚本，文件会被拉出脚本内容
           else {
-            setElementAttributes(el, attributes, src ? ['src'] : [])
+            const init = () => {
+              setElementAttributes(el, attributes, src ? ['src'] : [])
 
-            // el.setAttribute('type', 'mfy')
-            // el.textContent = textContent
-            if (src) {
-              el.setAttribute('data-script-origin-src', src)
+              // el.setAttribute('type', 'mfy')
+              // el.textContent = textContent
+              if (src) {
+                el.setAttribute('data-script-origin-src', src)
+              }
+
+              vmbox.appendChild(el)
             }
 
-            vmbox.appendChild(el)
-
-            jsvm.document.currentScript = el
-            await runScriptInSandbox(textContent, jsvm)
-            jsvm.document.currentScript = null
+            // 普通的javascript直接在沙箱中运行
+            if (type === 'text/javascript') {
+              init()
+              jsvm.document.currentScript = el
+              await runScriptInSandbox(textContent, jsvm)
+              jsvm.document.currentScript = null
+            }
+            // 模块化的转化为异步函数后在沙箱中执行
+            else if (type === 'module') {
+              init()
+              jsvm.document.currentScript = el
+              const moduleScript = textContent.replace(/import (.*?) from (.*?)\n/g, function(_, vars, src) {
+                const realSrc = src.substring(1, src.length - 1);
+                const url = resolvePath(baseUrl, realSrc, absRoot)
+                return `const ${vars} = await import('${url}');\n`
+              })
+              const scriptContent = `
+                (async function() {
+                  ${moduleScript}
+                })();
+              `
+              await runScriptInSandbox(scriptContent, jsvm)
+              jsvm.document.currentScript = null
+            }
+            // 其他的直接放进去即可，例如type="template"
+            else {
+              el.textContent = textContent
+              vmbox.appendChild(el)
+            }
           }
+
+          await ready()
         })
 
         this._mounted = true
@@ -464,7 +496,6 @@ export class MFY_Element extends HTMLElement {
     const box = document.createElement('div')
 
     let _transition = ''
-    let _updating = false
     this._mounted = false
 
     this.sandbox = box

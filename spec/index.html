@@ -6,10 +6,13 @@
     width: 800px;
     height: 300px;
   }
-  main mfy-app {
+  mfy-app {
     position: absolute;
     top: 0;
     left: 0;
+  }
+  mfy-app[name=app4] {
+    top: 200px;
   }
 </style>
 
@@ -27,6 +30,8 @@
     <mfy-app name="app1"></mfy-app>
     <mfy-app name="app2"></mfy-app>
     <mfy-app name="app3"></mfy-app>
+
+    <mfy-app name="app4" src="./micro-apps/app4.html" mode="shadow"></mfy-app>
   </main>
 </div>
 
@@ -168,4 +173,8 @@
       $('#searchText').value = item[1]
     }
   }
+
+  scope.watch('app4', message => {
+    console.log('app4:', message)
+  })
 </script>

@@ -1,6 +1,10 @@
 export function createProxyElement(element, fakeElement = {}) {
   const proxy = new Proxy(fakeElement, {
     get(_, key) {
+      // 加固，防止逃逸
+      if (key === Symbol.unscopables) {
+        return;
+      }
       const el = typeof fakeElement[key] !== 'undefined' ? fakeElement : element
       const value = el[key]
       return typeof value === 'function' ? value.bind(element) : value
@@ -72,7 +76,11 @@ export async function createProxyWindow(win = window, doc = createProxyDocument(
   await buildFakeWindow()
 
   const fakeWindow = new Proxy({}, {
-    get(target, key) {
+    get(_, key) {
+      // 加固，防止逃逸
+      if (key === Symbol.unscopables) {
+        return;
+      }
       if (fake.window) {
         const value = fake.window[key]
         return typeof value === 'function' ? value.bind(fake.window) : value
@@ -82,7 +90,7 @@ export async function createProxyWindow(win = window, doc = createProxyDocument(
         return typeof value === 'function' ? value.bind(win) : value
       }
     },
-    set(target, key, value) {
+    set(_, key, value) {
       if (fake.window) {
         return fake.window[key] = value
       }
@@ -90,7 +98,7 @@ export async function createProxyWindow(win = window, doc = createProxyDocument(
         return win[key] = value
       }
     },
-    deleteProperty(target, key) {
+    deleteProperty(_, key) {
       if (fake.window) {
         return delete fake.window[key]
       }
@@ -101,6 +109,7 @@ export async function createProxyWindow(win = window, doc = createProxyDocument(
   })
 
   return createProxyElement(fakeWindow, {
+    top: win.top,
     fakeId,
     document: doc,
     rebuildFakeWindow,
@@ -123,6 +132,21 @@ export async function runScriptInSandbox(scriptCode, sandboxGlobalVars = {}, inj
   const names = Object.keys(injectGlobalVars)
   const hasVars = names.length
   const values = Object.values(injectGlobalVars)
+
+  // 检查代码合法性，避免代码非法关闭 with
+  let pairs = []
+  for (let i = 0, len = scriptCode.length; i < len; i ++) {
+    const char = scriptCode[i]
+    if (char === '{') {
+      pairs.push('{')
+    }
+    else if (char === '}') {
+      if (!pairs.length) {
+        throw new Error(`传入代码有非法的关闭 } at ${i}: ${scriptCode}`)
+      }
+      pairs.pop()
+    }
+  }
 
   // 在内部可能直接使用window上的全局变量，因此要放在with内部运行
   const resolver = new Function(`
